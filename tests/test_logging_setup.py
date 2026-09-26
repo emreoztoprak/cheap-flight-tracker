@@ -89,3 +89,19 @@ def test_unwritable_log_file_warns_and_keeps_logging_to_stdout(tmp_path):
     logging.getLogger("cheap_flights.x").info("still here")
     output = stream.getvalue()
     assert "cannot write log file" in output and "still here" in output
+
+
+def test_log_buffer_keeps_recent_redacted_lines():
+    from cheap_flights.logging_setup import LogBuffer
+
+    buffer = LogBuffer(capacity=3)
+    configure_logging("DEBUG", "text", [SECRET], io.StringIO(), buffer=buffer)
+    log = logging.getLogger("cheap_flights.test")
+    log.debug("one")
+    log.info("two %s", SECRET)
+    log.warning("three")
+    log.error("four")
+    entries = buffer.entries()
+    assert [e.level for e in entries] == ["INFO", "WARNING", "ERROR"]
+    assert "two ***" in entries[0].text and SECRET not in entries[0].text
+    assert [e.level for e in buffer.entries(min_level="WARNING")] == ["WARNING", "ERROR"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -29,10 +29,12 @@ def _run_safely(job: Callable[[], object]) -> None:
         log.exception("run failed unexpectedly; the scheduler keeps going")
 
 
+Schedule = tuple[str, ZoneInfo]
+
+
 def run_forever(
     job: Callable[[], object],
-    schedule: str,
-    tz: ZoneInfo,
+    get_schedule: Callable[[], Schedule | None],
     stop: threading.Event,
     heartbeat: Path,
     *,
@@ -40,20 +42,33 @@ def run_forever(
     wait: Callable[[float], object] | None = None,
     tick_seconds: float = 30.0,
 ) -> None:
-    clock = now or (lambda: datetime.now(tz))
+    """Run `job` as soon as a schedule exists, then at each cron time.
+
+    `get_schedule` is asked on every tick, so a schedule saved from the web UI applies at once;
+    it returns None while there is no valid configuration.
+    """
+    clock = now or (lambda: datetime.now(UTC))
     pause = wait or stop.wait
-    if stop.is_set():
-        return
-    touch_heartbeat(heartbeat)
-    _run_safely(job)
+    started = False
     while not stop.is_set():
-        due = croniter(schedule, clock()).get_next(datetime)
+        touch_heartbeat(heartbeat)
+        schedule = get_schedule()
+        if schedule is None:
+            pause(tick_seconds)
+            continue
+        if not started:
+            started = True
+            _run_safely(job)
+            continue
+        cron, tz = schedule
+        due = croniter(cron, clock().astimezone(tz)).get_next(datetime)
         log.info("next run at %s", due.isoformat())
         while not stop.is_set():
             touch_heartbeat(heartbeat)
+            if get_schedule() != schedule:
+                break  # changed in the UI: work out the next run again
             remaining = (due - clock()).total_seconds()
             if remaining <= 0:
+                _run_safely(job)
                 break
             pause(min(tick_seconds, remaining))
-        if not stop.is_set():
-            _run_safely(job)

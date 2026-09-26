@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import threading
+from collections import deque
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -50,6 +53,40 @@ class RedactingFormatter(logging.Formatter):
         return self._redact(self._inner.format(clean))
 
 
+@dataclass(frozen=True)
+class LogEntry:
+    created: float
+    level: str
+    text: str
+
+
+class LogBuffer:
+    """The most recent formatted log lines, for the web UI."""
+
+    def __init__(self, capacity: int = 500) -> None:
+        self._entries: deque[LogEntry] = deque(maxlen=capacity)
+        self._lock = threading.Lock()
+        buffer = self
+
+        class _Handler(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                try:
+                    entry = LogEntry(record.created, record.levelname, self.format(record))
+                except Exception:
+                    self.handleError(record)
+                    return
+                with buffer._lock:
+                    buffer._entries.append(entry)
+
+        self.handler: logging.Handler = _Handler()
+
+    def entries(self, min_level: str = "DEBUG", limit: int | None = None) -> list[LogEntry]:
+        threshold = logging.getLevelName(min_level.upper())
+        with self._lock:
+            picked = [e for e in self._entries if logging.getLevelName(e.level) >= threshold]
+        return picked[-limit:] if limit else picked
+
+
 def configure_logging(
     level: str,
     fmt: str,
@@ -59,6 +96,7 @@ def configure_logging(
     file: Path | None = None,
     max_bytes: int = 10 * 1024 * 1024,
     backups: int = 5,
+    buffer: LogBuffer | None = None,
 ) -> None:
     inner = JsonFormatter() if fmt == "json" else logging.Formatter(TEXT_FORMAT)
     formatter = RedactingFormatter(inner, list(secrets))
@@ -72,6 +110,8 @@ def configure_logging(
             )
         except OSError as exc:
             file_problem = exc
+    if buffer is not None:
+        handlers.append(buffer.handler)
     root = logging.getLogger()
     for old in root.handlers:
         if getattr(old, "_cheap_flights", False):
