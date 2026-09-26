@@ -1,0 +1,58 @@
+# Cheap Flight Tracker configuration. Copy to config.yaml and edit.
+# ${NAME} is replaced with the environment variable NAME (see .env.example).
+
+schedule: "0 */6 * * *"     # cron: every 6 hours. A check also runs once at startup.
+timezone: Europe/Madrid      # used for the schedule, "today", and times in health alerts
+
+defaults:                    # every route inherits these; a route can override any of them
+  currency: EUR
+  trip: round-trip           # round-trip | one-way
+  nights: 3-7                # round trips: stay length range (or a single number)
+  window: { next_days: 90 }  # or { from: 2026-11-01, to: 2026-12-15 }
+  stops: any                 # direct | max_1 | any
+  passengers: { adults: 1 }
+  top_n: 3                   # flight options listed in each deal alert
+
+search:
+  delay_seconds: 1.0         # pause between Google requests (±30% jitter)
+  max_searches_per_run: 2000 # above this, dates are thinned evenly (every 2nd, 3rd... day)
+  retries: 3
+
+routes:
+  - name: ist-to-europe
+    from: Istanbul           # airport code (IST) or city
+    to: [London, AMS, DE]    # city, airport code, or country code (quote "NO" for Norway)
+    alert: { max_price: 150, drop_percent: 20 }
+
+  - name: weekend-rome
+    from: IST
+    to: Rome
+    nights: 2
+    weekdays: [fri]
+    depart_time: "16:00-23:00"
+    stops: direct
+    window: { next_days: 60 }
+    alert: { max_price: 120 }
+
+notify:
+  telegram:
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+  email:
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    username: "${SMTP_USER}"
+    password: "${SMTP_PASSWORD}"
+    from: "${SMTP_USER}"
+    to: ["${SMTP_USER}"]
+
+health:
+  alert_after_failed_runs: 2 # "I can't fetch data" after this many failed runs in a row
+  reminder_hours: 24
+
+logging:
+  level: INFO                # DEBUG shows every search
+  format: text               # text | json
+  file: logs/cheap-flights.log  # also log here (relative to /data); "" = stdout only
+  max_size_mb: 10            # rotate the file at this size...
+  backups: 5                 # ...keeping this many old files (.1 … .5)

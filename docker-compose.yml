@@ -1,0 +1,11 @@
+services:
+  cheap-flights:
+    image: ghcr.io/emreoztoprak/cheap-flight-tracker:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - cfr-data:/data
+
+volumes:
+  cfr-data:

@@ -1,0 +1,16 @@
+# City name -> Google Flights city entity. One search covers all of the city's airports.
+# Only entities verified against live Google Flights (2026-09-26) belong here.
+# Cities not listed resolve to the airports whose city field matches (one search per airport).
+London: /m/04jpl
+Paris: /m/05qtj
+Berlin: /m/0156q
+Rome: /m/06c62
+Milan: /m/0947l
+New York: /m/02_286
+Barcelona: /m/01f62
+Amsterdam: /m/0k3p
+Madrid: /m/056_y
+Istanbul: /m/09949m
+Moscow: /m/04swd
+Stockholm: /m/06mxs
+Frankfurt: /m/02z0j
