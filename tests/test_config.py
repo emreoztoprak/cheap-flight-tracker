@@ -214,3 +214,11 @@ def test_log_file_can_be_turned_off(tmp_path):
 def test_log_file_size_must_be_positive(tmp_path):
     with pytest.raises(ConfigError, match=r"logging\.max_size_mb"):
         load(tmp_path, BASE + "logging: { max_size_mb: 0 }\n")
+
+
+def test_history_days_default_and_limits(tmp_path):
+    assert load(tmp_path, BASE).history_days == 90
+    assert load(tmp_path, BASE + "history_days: 365\n").history_days == 365
+    for bad in ("30", "4000"):
+        with pytest.raises(ConfigError, match="history_days"):
+            load(tmp_path, BASE + f"history_days: {bad}\n")

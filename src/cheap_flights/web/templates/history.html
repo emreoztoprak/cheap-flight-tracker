@@ -12,7 +12,7 @@
     {% endif %}
   </div>
   {% if names %}<div class="chart-box"><canvas id="history-chart"></canvas></div>
-  <p class="muted small">Cheapest price per destination at each run, last 90 days.</p>
+  <p class="muted small">Cheapest price per destination at each run, last {{ history_days }} days.</p>
   {% else %}<p class="muted">No routes yet.</p>{% endif %}
 </section>
 

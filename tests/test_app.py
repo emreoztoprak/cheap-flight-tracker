@@ -180,3 +180,23 @@ def test_crashed_run_is_recorded_too():
     app, store, _ = build(explode)
     app.run_once()
     assert store.last_run().failures == {"internal_error": 1}
+
+
+def test_history_is_kept_for_the_configured_number_of_days():
+    def run_with(days):
+        store = Store(":memory:")
+        store.add_price("r1", "LHR", NOW - timedelta(days=100), 50, "EUR")
+        cfg = Config.model_validate({**config().model_dump(by_alias=True), "history_days": days})
+        App(
+            cfg,
+            [make_resolved(make_route(trip="one-way", window={"next_days": 1}))],
+            Fetcher(priced(150)),
+            store,
+            Dispatcher([Inbox()]),
+            clock=lambda: NOW,
+            sleep=lambda s: None,
+        ).run_once()
+        return store.route_lows("r1", "EUR", NOW - timedelta(days=365), NOW)
+
+    assert run_with(120) == [50]
+    assert run_with(90) == []

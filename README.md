@@ -136,6 +136,7 @@ override the file.
 |---|---|---|
 | `schedule` | `0 */6 * * *` | Cron expression for checks (a check also runs at startup) |
 | `timezone` | `UTC` | Time zone for the schedule, "today", and health alert times |
+| `history_days` | `90` | How long prices, sent alerts and runs are kept (31–3650); older data is deleted after each run. The History chart shows this whole period |
 | `defaults` | – | Route settings every route inherits; a key set on a route replaces the default |
 | `search` | – | See below |
 | `routes` | required | List of routes |
@@ -220,7 +221,8 @@ so far, then exits. Press Ctrl+C a second time to exit immediately.
 
 ## Data
 
-`/data/state.db` (SQLite) keeps price history, sent alerts and runs (90 days), each route's
+`/data/state.db` (SQLite) keeps price history, sent alerts and runs (for `history_days`, default
+90 days — set it under Settings → Price history), each route's
 latest offers, and health state. Older databases are upgraded automatically.
 `/data/heartbeat` is updated while running; the Docker health check marks the container
 unhealthy if it is older than 10 minutes.

@@ -521,6 +521,9 @@ def create_app(
 
     # --- history --------------------------------------------------------------------------
 
+    def history_days() -> int:
+        return coordinator.loaded.config.history_days if coordinator.loaded else 90
+
     @app.get("/history", response_class=HTMLResponse)
     def history(request: Request, route: str | None = None):
         names = [r.route.name for r in coordinator.loaded.routes] if coordinator.loaded else []
@@ -536,10 +539,12 @@ def create_app(
             alerts=alerts,
             runs=runs,
             tz=tz,
+            history_days=history_days(),
         )
 
     @app.get("/history/data/{route}")
-    def history_data(route: str, days: int = 90):
+    def history_data(route: str):
+        days = history_days()
         return JSONResponse(
             views.history_series(coordinator, route, clock() - timedelta(days=days))
         )

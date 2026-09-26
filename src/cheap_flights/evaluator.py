@@ -13,7 +13,6 @@ from .store import Store
 HISTORY_WINDOW = timedelta(days=30)
 MIN_HISTORY_RUNS = 3
 REPEAT_AFTER = timedelta(days=7)
-HISTORY_RETENTION = timedelta(days=90)
 
 
 @dataclass(frozen=True)

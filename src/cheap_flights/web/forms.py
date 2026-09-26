@@ -304,6 +304,7 @@ def notify_from_form(
 SETTINGS_FIELDS: tuple[tuple[str, str | None, str, type], ...] = (
     ("schedule", None, "schedule", str),
     ("timezone", None, "timezone", str),
+    ("history_days", None, "history_days", int),
     ("search.delay_seconds", "search", "delay_seconds", float),
     ("search.max_searches_per_run", "search", "max_searches_per_run", int),
     ("search.retries", "search", "retries", int),

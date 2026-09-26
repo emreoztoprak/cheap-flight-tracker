@@ -1,0 +1,22 @@
+routes:
+- name: madrid-to-istanbul
+  from: MAD
+  to:
+  - IST
+  nights: 7-10
+  window:
+    next_days: 30
+  stops: direct
+  alert:
+    max_price: 497
+notify:
+  telegram:
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: '975333329'
+search:
+  delay_seconds: 2.0
+health:
+  alert_after_failed_runs: 3
+logging:
+  level: DEBUG
+schedule: 0 */6 * * *

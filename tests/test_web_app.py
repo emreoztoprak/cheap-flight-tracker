@@ -348,3 +348,23 @@ def test_place_suggestions_use_the_fields_own_value(env):
     assert 'data-place="London"' in to.text
     origin = client.get("/places", params={"origin": "heathr", "target": "origin"})
     assert 'data-place="LHR"' in origin.text
+
+
+def test_history_chart_covers_the_configured_period(env):
+    from datetime import timedelta
+
+    client, coordinator, *_ = configured(env)
+    coordinator.store.add_price("ist-lon", "LHR", NOW - timedelta(days=200), 70, "EUR")
+    assert client.get("/history/data/ist-lon").json()["datasets"] == []
+    assert coordinator.save({**RAW, "history_days": 365}, {}) == []
+    assert client.get("/history/data/ist-lon").json()["datasets"][0]["data"] == [70]
+    assert "last 365 days" in client.get("/history").text
+
+
+def test_history_days_is_saved_from_the_settings_page(env):
+    client, coordinator, *_ = configured(env)
+    ok = client.post("/settings", data={"history_days": "365"}, follow_redirects=False)
+    assert ok.status_code == 303 and coordinator.loaded.config.history_days == 365
+    bad = client.post("/settings", data={"history_days": "10"})
+    assert "greater than or equal to 31" in bad.text
+    assert coordinator.loaded.config.history_days == 365

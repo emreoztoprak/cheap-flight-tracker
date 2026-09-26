@@ -7,10 +7,10 @@ import time
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from .config import Config
-from .evaluator import HISTORY_RETENTION, evaluate, record_history, top_offers
+from .evaluator import evaluate, record_history, top_offers
 from .health import EventKind, advance, load_state, save_state
 from .messages import deal_message, health_message, offer_summary
 from .notify.base import Dispatcher
@@ -134,7 +134,7 @@ class App:
             log.warning("run interrupted by shutdown after %d searches", output.stats.searches)
         for resolved in self._routes:
             self._finish_route(resolved, output.offers.get(resolved.route.name, []), now)
-        self._store.prune(now - HISTORY_RETENTION)
+        self._store.prune(now - timedelta(days=self._config.history_days))
         return output.stats
 
     def _finish_route(self, resolved: ResolvedRoute, offers: list, now: datetime) -> None:

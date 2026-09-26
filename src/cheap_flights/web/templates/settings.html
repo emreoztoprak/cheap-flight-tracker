@@ -22,6 +22,13 @@
     <p id="cron-preview" class="estimate"></p>
   </section>
 
+  <section class="card"><h2>Price history</h2>
+    <div class="form-grid">
+      {{ field("history_days", "Keep price history (days)", v["history_days"], e, "number", placeholder="90",
+         help="31–3650. Prices, alerts and runs older than this are deleted after each run — lowering it deletes older data.", attrs='min="31" max="3650"') }}
+    </div>
+  </section>
+
   <section class="card"><h2>Route defaults</h2>
     <p class="muted">Every route uses these unless it sets its own value. Empty = built-in default.</p>
     <div class="form-grid">

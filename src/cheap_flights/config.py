@@ -274,6 +274,7 @@ class LoggingConfig(_Model):
 class Config(_Model):
     schedule: str = "0 */6 * * *"
     timezone: str = "UTC"
+    history_days: int = Field(default=90, ge=31, le=3650)  # the drop rule needs 30 days
     search: SearchSettings = SearchSettings()
     routes: tuple[Route, ...] = Field(min_length=1)
     notify: NotifyConfig

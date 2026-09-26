@@ -232,3 +232,10 @@ def test_saved_password_is_not_kept_for_a_different_server():
         CONFIG,
     )
     assert errors == [FieldError("smtp_password", "enter the password for this username")]
+
+
+def test_history_days_setting_round_trip():
+    raw = {"routes": [], "history_days": 365}
+    assert forms.settings_to_form(raw)["history_days"] == "365"
+    assert forms.settings_from_form(form(history_days="180"), raw)["history_days"] == 180
+    assert "history_days" not in forms.settings_from_form(form(history_days=""), raw)
