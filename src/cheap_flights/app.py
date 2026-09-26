@@ -10,14 +10,14 @@ from dataclasses import replace
 from datetime import UTC, datetime
 
 from .config import Config
-from .evaluator import HISTORY_RETENTION, evaluate, record_history
+from .evaluator import HISTORY_RETENTION, evaluate, record_history, top_offers
 from .health import EventKind, advance, load_state, save_state
-from .messages import deal_message, health_message
+from .messages import deal_message, health_message, offer_summary
 from .notify.base import Dispatcher
 from .places import ResolvedRoute
 from .planner import build_plan, departure_dates
 from .runner import Fetcher, RunStats, execute
-from .store import Store
+from .store import RunRecord, Store
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +34,10 @@ def _nothing() -> None:
     return None
 
 
+def _ignore(_total: int) -> None:
+    return None
+
+
 class App:
     def __init__(
         self,
@@ -47,6 +51,8 @@ class App:
         sleep: Callable[[float], None] = time.sleep,
         should_stop: Callable[[], bool] = _never,
         on_progress: Callable[[], None] = _nothing,
+        on_planned: Callable[[int], None] = _ignore,
+        trigger: str = "scheduled",
     ) -> None:
         self._config = config
         self._routes = list(routes)
@@ -57,6 +63,8 @@ class App:
         self._sleep = sleep
         self._should_stop = should_stop
         self._on_progress = on_progress
+        self._on_planned = on_planned
+        self._trigger = trigger
 
     def run_once(self) -> RunStats:
         started = self._clock()
@@ -65,7 +73,19 @@ class App:
         except Exception:
             log.exception("run crashed")
             stats = RunStats(searches=1, failures=Counter({"internal_error": 1}))
-        self._update_health(stats, self._clock())
+        finished = self._clock()
+        self._store.record_run(
+            RunRecord(
+                started_at=started,
+                finished_at=finished,
+                trigger=self._trigger,
+                searches=stats.searches,
+                ok=stats.ok,
+                no_flights=stats.no_flights,
+                failures=dict(stats.failures),
+            )
+        )
+        self._update_health(stats, finished)
         log.info(
             "run finished %s duration=%.0fs",
             stats.summary(),
@@ -100,6 +120,7 @@ class App:
                 search.max_searches_per_run,
             )
         log.info("run started: %d searches across %d routes", len(plan.jobs), len(self._routes))
+        self._on_planned(len(plan.jobs))
         output = execute(
             plan.jobs,
             self._fetcher,
@@ -120,6 +141,23 @@ class App:
         route = resolved.route
         deal = evaluate(route, offers, self._store, now)
         record_history(offers, self._store, now)
+        self._store.set_route_offers(
+            route.name,
+            {
+                "run_at": now.isoformat(),
+                "currency": route.currency,
+                "offers": [
+                    {
+                        "price": offer.price,
+                        "line": offer_summary(offer),
+                        "url": offer.url,
+                        "destination": offer.legs[-1].destination,
+                        "depart_date": offer.depart_date.isoformat(),
+                    }
+                    for offer in top_offers(offers, route.top_n)
+                ],
+            },
+        )
         best = min((offer.price for offer in offers), default=None)
         log.info(
             "route %s: %d offers, best %s",
@@ -131,7 +169,7 @@ class App:
             return
         delivery = self._dispatcher.send(deal_message(deal))
         if delivery.delivered:
-            self._store.record_alert(route.name, now, deal.best_price, route.currency)
+            self._store.record_alert(route.name, now, deal.best_price, route.currency, deal.reason)
             log.info("deal alert sent for %s: %s", route.name, deal.reason)
 
     def _update_health(self, stats: RunStats, now: datetime) -> None:

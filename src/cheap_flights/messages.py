@@ -17,18 +17,23 @@ def _stops(offer: Offer) -> str:
     return f"{offer.stops} stop{'s' if offer.stops > 1 else ''} ({via})"
 
 
-def offer_line(index: int, offer: Offer) -> Line:
+def offer_summary(offer: Offer) -> str:
+    """One-line description: price, airports, times, airlines, stops, return date."""
     first, last = offer.legs[0], offer.legs[-1]
     days_later = (last.arrive.date() - first.depart.date()).days
     arrival = f"{last.arrive:%H:%M}" + (f"+{days_later}" if days_later > 0 else "")
     airlines = ", ".join(offer.airlines) or first.airline
     text = (
-        f"{index}. {offer.price} {offer.currency}  {first.origin}→{last.destination}  "
+        f"{offer.price} {offer.currency}  {first.origin}→{last.destination}  "
         f"{first.depart:%a %d %b %H:%M}→{arrival}  {airlines}, {_stops(offer)}"
     )
     if offer.return_date is not None:
         text += f"  · return {offer.return_date:%a %d %b}"
-    return Line(text=text, url=offer.url)
+    return text
+
+
+def offer_line(index: int, offer: Offer) -> Line:
+    return Line(text=f"{index}. {offer_summary(offer)}", url=offer.url)
 
 
 def deal_message(deal: Deal) -> Message:

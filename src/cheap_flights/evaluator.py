@@ -49,7 +49,7 @@ def evaluate(route: Route, offers: Sequence[Offer], store: Store, now: datetime)
     last = store.last_alert(route.name, currency)
     if last is not None and best >= last.price and now - last.sent_at < REPEAT_AFTER:
         return None
-    return Deal(route=route, offers=_top(ranked, route.top_n), reason="; ".join(reasons))
+    return Deal(route=route, offers=top_offers(ranked, route.top_n), reason="; ".join(reasons))
 
 
 def record_history(offers: Sequence[Offer], store: Store, now: datetime) -> None:
@@ -63,7 +63,9 @@ def record_history(offers: Sequence[Offer], store: Store, now: datetime) -> None
         store.add_price(route, destination, now, offer.price, offer.currency)
 
 
-def _top(ranked: Sequence[Offer], limit: int) -> tuple[Offer, ...]:
+def top_offers(offers: Sequence[Offer], limit: int) -> tuple[Offer, ...]:
+    """Cheapest offers, at most one per (arrival airport, departure date)."""
+    ranked = sorted(offers, key=lambda offer: offer.price)
     picked: list[Offer] = []
     seen: set[tuple[str, object]] = set()
     for offer in ranked:

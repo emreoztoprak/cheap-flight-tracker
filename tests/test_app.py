@@ -143,3 +143,40 @@ def test_outage_alert_is_retried_next_run_when_no_channel_delivered():
     app.run_once()
     assert inbox.titles == ["⚠️ Cheap Flight Tracker: I can't fetch flight data"]
     assert load_state(store).outage_open
+
+
+def test_run_offers_and_alert_reason_are_stored_for_the_dashboard():
+    app, store, _ = build(priced(80))
+    totals = []
+    app = App(
+        config(),
+        [make_resolved(make_route(trip="one-way", window={"next_days": 2}))],
+        Fetcher(priced(80)),
+        store,
+        Dispatcher([Inbox()]),
+        clock=lambda: NOW,
+        sleep=lambda s: None,
+        on_planned=totals.append,
+        trigger="manual",
+    )
+    app.run_once()
+    assert totals == [2]
+    run = store.last_run()
+    assert (run.trigger, run.searches, run.ok, run.failures) == ("manual", 2, 2, {})
+    saved = store.route_offers("r1")
+    assert saved["run_at"] == NOW.isoformat()
+    assert saved["currency"] == "EUR"
+    assert [o["price"] for o in saved["offers"]] == [80, 80]  # one per departure date
+    first = saved["offers"][0]
+    assert first["line"].startswith("80 EUR  IST→LHR")
+    assert first["url"].startswith("https://www.google.com/travel/flights")
+    assert store.alerts(5)[0].reason == "at or below your limit of 100 EUR"
+
+
+def test_crashed_run_is_recorded_too():
+    def explode(job):
+        raise RuntimeError("bug")
+
+    app, store, _ = build(explode)
+    app.run_once()
+    assert store.last_run().failures == {"internal_error": 1}
