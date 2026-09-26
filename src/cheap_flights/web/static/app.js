@@ -1,5 +1,4 @@
 // Small progressive enhancements; every page also works without JavaScript.
-function lastToken(text) { const parts = text.split(","); return parts[parts.length - 1].trim(); }
 
 document.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-toggle-secret]");

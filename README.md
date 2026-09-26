@@ -52,8 +52,11 @@ the dashboard picks up hand edits on the next save or restart. Saving from the d
 rewrites `config.yaml` without comments.
 
 **Access.** The compose file publishes the dashboard on `127.0.0.1:8080`, so only this computer
-can open it. There is no login: if you change the port mapping to `8080:8080` to reach it from
-other devices, anyone on your network can change the settings.
+can open it, and the dashboard only answers to `localhost` / `127.0.0.1` (this blocks other
+websites from reaching it through your browser). There is no login. To open it from other
+devices, publish `8080:8080` and list the names you use in `CFR_UI_ALLOWED_HOSTS`
+(for example `CFR_UI_ALLOWED_HOSTS=192.168.1.20,nas.local`) — then anyone on your network can
+change the settings.
 
 **File ownership.** The container runs as the owner of the `./config` folder, so the files stay
 editable by you. Set `PUID` / `PGID` environment variables to choose a different user.
@@ -113,7 +116,7 @@ Turn on 2-Step Verification, create an **App password** at
 | `--config PATH` | Config file (default `$CFR_CONFIG` or `/config/config.yaml`) |
 | `--data-dir PATH` | State directory (default `$CFR_DATA_DIR` or `/data`) |
 | `--env-file PATH` | Secrets file (default `$CFR_ENV_FILE` or `.env` next to the config file) |
-| `--ui-host HOST` / `--ui-port PORT` | Dashboard address (default `0.0.0.0:8080`; `$CFR_UI_HOST`, `$CFR_UI_PORT`) |
+| `--ui-host HOST` / `--ui-port PORT` | Dashboard address (default `127.0.0.1:8080`, the Docker image uses `0.0.0.0`; `$CFR_UI_HOST`, `$CFR_UI_PORT`) |
 | `--log-level LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
 
 Exit code `2` means the configuration is invalid (or the data directory is unusable); the log

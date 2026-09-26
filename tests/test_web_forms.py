@@ -145,11 +145,11 @@ def test_notify_from_form_keeps_current_secrets_when_left_blank():
             telegram_bot_token="",
             telegram_chat_id="99",
             email_enabled="on",
-            smtp_host="smtp.y.com",
+            smtp_host="smtp.x.com",
             smtp_port="465",
-            smtp_username="me@y.com",
+            smtp_username="me@x.com",
             smtp_password="",
-            email_from="me@y.com",
+            email_from="me@x.com",
             email_to="c@y.com",
         ),
         CONFIG,
@@ -158,11 +158,11 @@ def test_notify_from_form_keeps_current_secrets_when_left_blank():
     assert notify == {
         "telegram": {"bot_token": "${TELEGRAM_BOT_TOKEN}", "chat_id": "99"},
         "email": {
-            "smtp_host": "smtp.y.com",
+            "smtp_host": "smtp.x.com",
             "smtp_port": 465,
-            "username": "me@y.com",
+            "username": "me@x.com",
             "password": "${SMTP_PASSWORD}",
-            "from": "me@y.com",
+            "from": "me@x.com",
             "to": ["c@y.com"],
         },
     }
@@ -218,3 +218,17 @@ def test_settings_round_trip_and_blank_means_built_in_default():
     }
     assert new["logging"] == {"level": "DEBUG"}
     assert new["routes"] == []
+
+
+def test_saved_password_is_not_kept_for_a_different_server():
+    _, _, errors = forms.notify_from_form(
+        form(
+            email_enabled="on",
+            smtp_host="other.example",
+            smtp_username="me@x.com",
+            email_from="me@x.com",
+            email_to="me@x.com",
+        ),
+        CONFIG,
+    )
+    assert errors == [FieldError("smtp_password", "enter the password for this username")]

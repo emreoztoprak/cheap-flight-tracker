@@ -11,7 +11,7 @@ FROM python:3.12-slim-bookworm
 RUN useradd --system --uid 10001 --no-create-home app && mkdir -p /data /config
 COPY --from=build /app/.venv /app/.venv
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 CFR_UI_HOST=0.0.0.0
 VOLUME ["/data"]
 EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=5s --start-period=120s \

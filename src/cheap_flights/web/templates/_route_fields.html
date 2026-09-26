@@ -4,12 +4,12 @@
   {{ field("name", "Name", route.name, e, help="Letters, digits, - _ . (used to track history)", attrs='required pattern="[A-Za-z0-9_.\\-]+"') }}
   <div class="field-wrap">
     {{ field("origin", "From", route.origin, e, help="Airport code (MAD) or city (Madrid)",
-       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#origin-places" hx-vals=\'js:{q: event.target.value, target: "origin"}\'') }}
+       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#origin-places" hx-vals=\'{"target": "origin"}\'') }}
     <div class="places" id="origin-places"></div>
   </div>
   <div class="field-wrap wide">
     {{ field("to", "To", route.to, e, help="Comma-separated airports, cities or country codes — e.g. EZE, London, DE",
-       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#to-places" hx-vals=\'js:{q: lastToken(event.target.value), target: "to"}\'') }}
+       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#to-places" hx-vals=\'{"target": "to"}\'') }}
     <div class="places" id="to-places"></div>
   </div>
 </div>

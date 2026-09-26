@@ -86,3 +86,13 @@ def test_config_file_is_readable_but_env_is_private(files, tmp_path):
     files.save(RAW, {"TELEGRAM_BOT_TOKEN": TOKEN})
     assert stat.S_IMODE((tmp_path / "config.yaml").stat().st_mode) == 0o644
     assert stat.S_IMODE((tmp_path / ".env").stat().st_mode) == 0o600
+
+
+def test_removing_the_last_secret_empties_the_env_file(files, tmp_path):
+    files.save(RAW, {"TELEGRAM_BOT_TOKEN": TOKEN})
+    email_only = {
+        "routes": RAW["routes"],
+        "notify": {"email": {"smtp_host": "h", "from": "a@b.c", "to": ["a@b.c"]}},
+    }
+    assert files.save(email_only, {"TELEGRAM_BOT_TOKEN": None}) == []
+    assert files.env_file() == {}

@@ -87,8 +87,8 @@ def env(tmp_path):
 
     buffer = LogBuffer()
     configure_logging("INFO", "text", [TOKEN, PASSWORD], buffer=buffer)
-    app = create_app(coordinator, buffer, make_notifier=make_notifier)
-    client = TestClient(app)
+    app = create_app(coordinator, buffer, make_notifier=make_notifier, allowed_hosts=["testserver"])
+    client = TestClient(app, headers={"Origin": "http://testserver"})
     return client, coordinator, files, inbox, tested
 
 
@@ -340,3 +340,11 @@ def test_run_duration_is_readable():
 
     assert duration(RunRecord(NOW, NOW + timedelta(seconds=3), "manual", 1, 1, 0)) == "3 s"
     assert duration(RunRecord(NOW, NOW + timedelta(minutes=5), "manual", 1, 1, 0)) == "5 min"
+
+
+def test_place_suggestions_use_the_fields_own_value(env):
+    client = configured(env)[0]
+    to = client.get("/places", params={"to": "EZE, Lond", "target": "to"})
+    assert 'data-place="London"' in to.text
+    origin = client.get("/places", params={"origin": "heathr", "target": "origin"})
+    assert 'data-place="LHR"' in origin.text

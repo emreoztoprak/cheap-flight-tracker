@@ -140,7 +140,11 @@ def route_from_form(form: FormLike, defaults: Mapping[str, Any]) -> dict[str, An
         full["weekdays"] = weekdays
     start, end = _text(form, "depart_from"), _text(form, "depart_to")
     if start or end:
-        full["depart_time"] = f"{int(start or 0):02d}:00-{int(end or 23):02d}:00"
+        start, end = start or "0", end or "23"
+        if start.isdigit() and end.isdigit():
+            full["depart_time"] = f"{int(start):02d}:00-{int(end):02d}:00"
+        else:
+            full["depart_time"] = f"{start}-{end}"  # rejected by validation with a clear message
     full["stops"] = _text(form, "stops") or "any"
     full["currency"] = _text(form, "currency").upper() or "EUR"
     passengers: dict[str, Any] = {"adults": _number(_text(form, "adults") or "1", int)}
@@ -224,6 +228,28 @@ def notify_to_form(config: Config | None) -> dict[str, Any]:
     }
 
 
+def saved_smtp_password(current: Any, host: str, username: str) -> str:
+    """The saved password, but only for the same server and username it was saved for."""
+    if current is None or not current.password:
+        return ""
+    if current.smtp_host != host or (current.username or "") != username:
+        return ""
+    return current.password
+
+
+def env_references(form: FormLike, skip: tuple[str, ...] = ()) -> list[FieldError]:
+    """${NAME} would pull other secrets or environment values into visible settings."""
+    errors = []
+    for key in {key for key, _ in form.multi_items()} if hasattr(form, "multi_items") else []:
+        if key in skip:
+            continue
+        for value in form.getlist(key):
+            if isinstance(value, str) and "${" in value:
+                errors.append(FieldError(key, "“${…}” references are not allowed here"))
+                break
+    return errors
+
+
 def notify_from_form(
     form: FormLike, current: Config | None
 ) -> tuple[dict[str, Any], dict[str, str | None], list[FieldError]]:
@@ -254,8 +280,8 @@ def notify_from_form(
         }
         username = _text(form, "smtp_username")
         if username:
-            password = _text(form, "smtp_password") or (
-                current_email.password if current_email and current_email.password else ""
+            password = _text(form, "smtp_password") or saved_smtp_password(
+                current_email, _text(form, "smtp_host"), username
             )
             if not password:
                 errors.append(FieldError("smtp_password", "enter the password for this username"))

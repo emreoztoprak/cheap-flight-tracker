@@ -70,8 +70,8 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--ui-host",
-        default=os.environ.get("CFR_UI_HOST", "0.0.0.0"),
-        help="dashboard address (default: $CFR_UI_HOST or 0.0.0.0)",
+        default=os.environ.get("CFR_UI_HOST", "127.0.0.1"),
+        help="dashboard address (default: $CFR_UI_HOST or 127.0.0.1; the image sets 0.0.0.0)",
     )
     parser.add_argument(
         "--ui-port",
@@ -235,6 +235,7 @@ def _serve(
         )
 
     server = None
+    server_thread = None
     if not args.no_ui:
         from .web.app import create_app
 
@@ -247,14 +248,21 @@ def _serve(
                 access_log=False,
             )
         )
-        threading.Thread(target=server.run, name="dashboard", daemon=True).start()
+        server_thread = threading.Thread(target=server.run, name="dashboard", daemon=True)
+        server_thread.start()
         log.info("dashboard on port %d (http://localhost:%d)", args.ui_port, args.ui_port)
 
     try:
         run_forever(lambda: coordinator.run("scheduled"), coordinator.schedule, stop, heartbeat)
     finally:
+        # A "Run now" stops at its next search (it watches the same stop flag); let it finish
+        # recording before the web server and the database go away.
+        if not coordinator.wait_idle(60):
+            log.warning("a run is still active; stopping anyway")
         if server is not None:
             server.should_exit = True
+            if server_thread is not None:
+                server_thread.join(10)
     log.info("stopped")
     return 0
 

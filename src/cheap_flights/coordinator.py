@@ -67,6 +67,7 @@ class Coordinator:
         self._clock = clock
         self._sleep = sleep
         self._state_lock = threading.Lock()
+        self.edit_lock = threading.RLock()  # hold around read-modify-save of the config files
         self._run_lock = threading.Lock()
         self._loaded: Loaded | None = None
         self._error: str | None = None
@@ -104,14 +105,17 @@ class Coordinator:
     def save(
         self, raw: Mapping[str, Any], env_changes: Mapping[str, str | None]
     ) -> list[FieldError]:
-        errors = self.files.save(raw, env_changes)
+        with self.edit_lock:
+            errors = self.files.save(raw, env_changes)
+            if not errors:
+                self.reload()
         if not errors:
-            self.reload()
             log.info("settings saved; they apply from the next run")
         return errors
 
     def save_text(self, text: str) -> list[FieldError]:
-        errors = self.files.save_text(text)
+        with self.edit_lock:
+            errors = self.files.save_text(text)
         if not errors:
             self.reload()
             log.info("config.yaml saved; it applies from the next run")
@@ -120,6 +124,13 @@ class Coordinator:
     def schedule(self) -> Schedule | None:
         loaded = self._loaded
         return None if loaded is None else (loaded.config.schedule, loaded.config.tz)
+
+    def secrets(self) -> list[str]:
+        """Values that must never be shown: the active config's secrets and .env values."""
+        values = set(self.files.env_file().values())
+        if self._loaded is not None:
+            values.update(self._loaded.config.secrets())
+        return sorted((v for v in values if v and len(v) >= 4), key=len, reverse=True)
 
     def notifiers(self) -> list[Notifier]:
         loaded = self._loaded

@@ -159,3 +159,8 @@ def test_service_mode_serves_the_dashboard_and_setup_without_config(tmp_path, mo
     assert code == 0
     assert "Welcome" in seen["page"]
     assert seen["schedule"] is None
+
+
+def test_dashboard_listens_locally_by_default(monkeypatch):
+    monkeypatch.delenv("CFR_UI_HOST", raising=False)
+    assert cli.parse_args([]).ui_host == "127.0.0.1"

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
+import os
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -33,6 +35,7 @@ log = logging.getLogger(__name__)
 HERE = Path(__file__).parent
 
 MakeNotifier = Callable[[str, Mapping[str, Any]], Notifier]
+SECRET_FIELDS = ("telegram_bot_token", "smtp_password")
 
 NOTIFY_ERROR_FIELDS = {
     "notify.telegram.bot_token": "telegram_bot_token",
@@ -57,28 +60,65 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1")
+
+
+def default_allowed_hosts() -> set[str]:
+    extra = os.environ.get("CFR_UI_ALLOWED_HOSTS", "")
+    return set(LOCAL_HOSTS) | {h.strip().lower() for h in extra.split(",") if h.strip()}
+
+
+def _hostname(netloc: str) -> str:
+    return (urlsplit(f"//{netloc}").hostname or "").lower()
+
+
 def create_app(
     coordinator: Coordinator,
     log_buffer: LogBuffer,
     *,
     make_notifier: MakeNotifier = default_make_notifier,
     clock: Callable[[], datetime] = _utc_now,
+    allowed_hosts: Iterable[str] | None = None,
 ) -> FastAPI:
+    hosts = {h.lower().strip("[]") for h in (allowed_hosts or default_allowed_hosts())}
     app = FastAPI(title="Cheap Flight Tracker", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")
     files = coordinator.files
+    masked: dict[str, list[str]] = {"secrets": []}
+
+    def mask(value: Any) -> Any:
+        # Last line of defence: no rendered value may contain a secret, however it got there.
+        if isinstance(value, str):
+            for secret in masked["secrets"]:
+                if secret in value:
+                    value = value.replace(secret, "***")
+        return value
+
+    templates.env.finalize = mask
 
     @app.middleware("http")
-    async def same_origin_only(request: Request, call_next):
-        # No login: refuse state-changing requests that another website makes from your browser.
+    async def local_and_same_origin_only(request: Request, call_next):
+        # There is no login, so: answer only to known host names (blocks DNS rebinding), and
+        # refuse state-changing requests that another website makes from your browser.
+        host = request.headers.get("host", "")
+        if _hostname(host) not in hosts:
+            return PlainTextResponse(
+                "Host not allowed. Add it to CFR_UI_ALLOWED_HOSTS to use this address.",
+                status_code=400,
+            )
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             origin = request.headers.get("origin")
-            if origin and urlsplit(origin).netloc != request.headers.get("host"):
+            if origin is not None:
+                same = urlsplit(origin).netloc == host
+            else:
+                same = request.headers.get("sec-fetch-site") in ("same-origin", "none")
+            if not same:
                 return PlainTextResponse("cross-site request refused", status_code=403)
         return await call_next(request)
 
     def page(request: Request, name: str, active: str, status_code: int = 200, **context: Any):
+        masked["secrets"] = coordinator.secrets()
         now = clock()
         return templates.TemplateResponse(
             request,
@@ -138,6 +178,8 @@ def create_app(
 
     @app.get("/setup", response_class=HTMLResponse)
     def setup_form(request: Request):
+        if files.exists():
+            return RedirectResponse("/", status_code=303)
         return page(
             request,
             "setup.html",
@@ -150,9 +192,12 @@ def create_app(
 
     @app.post("/setup", response_class=HTMLResponse)
     async def setup_save(request: Request):
+        if files.exists():
+            return RedirectResponse("/", status_code=303)  # never overwrite an existing config
         form = await request.form()
         route = forms.route_from_form(form, {})
         notify, env, notify_errors = forms.notify_from_form(form, None)
+        notify_errors = forms.env_references(form, SECRET_FIELDS) + notify_errors
         errors = notify_errors or coordinator.save({"routes": [route], "notify": notify}, env)
         if not errors:
             return redirect("/")
@@ -235,6 +280,21 @@ def create_app(
 
     async def save_route(request: Request, index: int | None):
         form = await request.form()
+        refs = forms.env_references(form)
+        if refs:
+            return page(
+                request,
+                "route_form.html",
+                "routes",
+                route=_submitted(form),
+                index=index,
+                field_errors={},
+                general_errors=[f"{e.path}: {e.message}" for e in refs],
+            )
+        with coordinator.edit_lock:
+            return _save_route(request, form, index)
+
+    def _save_route(request: Request, form: Any, index: int | None):
         raw = raw_config()
         routes = list(raw.get("routes") or [])
         route = forms.route_from_form(form, raw.get("defaults") or {})
@@ -270,6 +330,10 @@ def create_app(
 
     @app.post("/routes/{index}/delete", response_class=HTMLResponse)
     def route_delete(request: Request, index: int):
+        with coordinator.edit_lock:
+            return _route_delete(request, index)
+
+    def _route_delete(request: Request, index: int):
         raw = raw_config()
         routes = list(raw.get("routes") or [])
         if len(routes) <= 1:
@@ -285,6 +349,10 @@ def create_app(
 
     @app.post("/routes/{index}/duplicate", response_class=HTMLResponse)
     def route_duplicate(request: Request, index: int):
+        with coordinator.edit_lock:
+            return _route_duplicate(request, index)
+
+    def _route_duplicate(request: Request, index: int):
         raw = raw_config()
         routes = list(raw.get("routes") or [])
         if 0 <= index < len(routes):
@@ -302,9 +370,12 @@ def create_app(
         return redirect("/routes")
 
     @app.get("/places", response_class=HTMLResponse)
-    def places(request: Request, q: str = "", target: str = "to"):
+    def places(request: Request, target: str = "to"):
+        # htmx sends the field's own value (?to=... or ?origin=...); "to" is a comma list.
+        text = request.query_params.get(target) or request.query_params.get("q") or ""
+        query = text.split(",")[-1].strip() if target == "to" else text.strip()
         return templates.TemplateResponse(
-            request, "_places.html", {"options": place_index().suggest(q), "target": target}
+            request, "_places.html", {"options": place_index().suggest(query), "target": target}
         )
 
     # --- notifications --------------------------------------------------------------------
@@ -326,14 +397,18 @@ def create_app(
         form = await request.form()
         config = coordinator.loaded.config if coordinator.loaded else None
         notify, env, errors = forms.notify_from_form(form, config)
+        errors = forms.env_references(form, SECRET_FIELDS) + errors
         if not errors:
-            raw = raw_config()
-            if not raw.get("routes"):
-                errors = [
-                    FieldError("", "Add a route first (Setup) — a config needs at least one route.")
-                ]
-            else:
-                errors = coordinator.save({**raw, "notify": notify}, env)
+            with coordinator.edit_lock:
+                raw = raw_config()
+                if not raw.get("routes"):
+                    errors = [
+                        FieldError(
+                            "", "Add a route first (Setup) — a config needs at least one route."
+                        )
+                    ]
+                else:
+                    errors = coordinator.save({**raw, "notify": notify}, env)
         if not errors:
             return redirect("/notifications")
         fields = _notify_fields(errors)
@@ -355,7 +430,8 @@ def create_app(
         config = coordinator.loaded.config if coordinator.loaded else None
         try:
             settings = _channel_settings(channel, form, config)
-            make_notifier(channel, settings).send(check_message())
+            notifier = make_notifier(channel, settings)
+            await run_in_threadpool(notifier.send, check_message())  # SMTP can take seconds
         except Exception as exc:
             return HTMLResponse(f'<span class="result bad">Failed: {_escape(str(exc))}</span>')
         return HTMLResponse('<span class="result good">Sent ✓ — check your messages</span>')
@@ -378,15 +454,20 @@ def create_app(
     @app.post("/settings", response_class=HTMLResponse)
     async def settings_save(request: Request):
         form = await request.form()
-        raw = raw_config()
-        if not raw.get("routes"):
-            errors = [
-                FieldError(
-                    "", "Finish Setup first — a config needs a route and a notification channel."
-                )
-            ]
-        else:
-            errors = coordinator.save(forms.settings_from_form(form, raw), {})
+        errors = forms.env_references(form)
+        with coordinator.edit_lock:
+            raw = raw_config()
+            if errors:
+                pass
+            elif not raw.get("routes"):
+                errors = [
+                    FieldError(
+                        "",
+                        "Finish Setup first — a config needs a route and a notification channel.",
+                    )
+                ]
+            else:
+                errors = coordinator.save(forms.settings_from_form(form, raw), {})
         if not errors:
             return redirect("/settings")
         known = {field for field, *_ in forms.SETTINGS_FIELDS}
@@ -548,8 +629,12 @@ def _channel_settings(channel: str, form: Any, config: Any) -> dict[str, Any]:
         }
         if text("smtp_username"):
             settings["username"] = text("smtp_username")
-            settings["password"] = (
-                text("smtp_password") or (current.password if current else "") or ""
+            settings["password"] = text("smtp_password") or forms.saved_smtp_password(
+                current, settings["smtp_host"], settings["username"]
             )
+            if not settings["password"]:
+                raise ValueError(
+                    "enter the password (the saved one only works for the saved server)"
+                )
         return settings
     raise ValueError(f"unknown channel {channel!r}")

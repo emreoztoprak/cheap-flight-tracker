@@ -126,10 +126,9 @@ class SettingsFiles:
             self._validate(config_text, parse_env(env_text))
         except ConfigError as exc:
             return field_errors(exc)
+        if env_text != self.env_text():
+            _write_atomic(self.env_path, env_text, mode=0o600)  # first: config may refer to it
         _write_atomic(self.config_path, config_text, mode=0o644)
-        if env_text != self.env_text() or not self.env_path.exists():
-            if env_text:
-                _write_atomic(self.env_path, env_text, mode=0o600)
         return []
 
     def _validate(self, config_text: str, env_file: Mapping[str, str]) -> Loaded:
