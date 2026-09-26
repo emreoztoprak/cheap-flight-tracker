@@ -12,10 +12,6 @@ tells you that too.
   seen in the last 30 days.
 - Runs on a cron schedule inside Docker, or once on demand.
 
-> Prices are read from the public Google Flights website. Google's terms don't allow automated
-> access; this tool is meant for low-volume personal use. Google can change its page at any
-> time — when that breaks fetching, you get a "can't fetch flight data" alert.
-
 ## Quick start
 
 The image is published to GitHub Container Registry for `linux/amd64` and `linux/arm64`, so there
