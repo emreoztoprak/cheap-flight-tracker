@@ -52,7 +52,7 @@ def test_dry_run_prints_deals_and_writes_nothing(tmp_path, monkeypatch, capsys):
     data_dir = tmp_path / "data"
     code = cli.main(["--config", write_config(tmp_path), "--dry-run", "--data-dir", str(data_dir)])
     assert code == 0
-    assert "🔥 ist-lhr: " in capsys.readouterr().out
+    assert "🔥 ist-lhr — " in capsys.readouterr().out
     assert not data_dir.exists()  # no state db, no log file
 
 

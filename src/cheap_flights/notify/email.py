@@ -65,14 +65,55 @@ class EmailNotifier:
 
     @staticmethod
     def _html(message: Message) -> str:
-        items = "".join(
-            f'<li><a href="{escape(line.url)}">{escape(line.text)}</a></li>'
-            if line.url
-            else f"<li>{escape(line.text)}</li>"
-            for line in message.lines
+        blocks: list[str] = []
+        card: list[str] | None = None
+
+        def close_card() -> None:
+            nonlocal card
+            if card is not None:
+                blocks.append(f'<div class="card" style="{_CARD}">{"".join(card)}</div>')
+                card = None
+
+        for line in message.lines:
+            text = escape(line.text)
+            if line.style == "option":
+                close_card()
+                card = [f'<div class="option" style="{_OPTION}">{text}</div>']
+                continue
+            if line.style == "gap":
+                close_card()
+                continue
+            if line.style == "link" and line.url:
+                html = (
+                    f'<div style="{_ROW}"><a class="button" href="{escape(line.url)}" '
+                    f'style="{_BUTTON}">{text}</a></div>'
+                )
+            else:
+                if line.url:
+                    text = f'<a href="{escape(line.url)}">{text}</a>'
+                muted = _MUTED if line.style in ("detail", "note") else ""
+                html = f'<p style="{_P}{muted}">{text}</p>'
+            (card if card is not None else blocks).append(html)
+        close_card()
+        footer = (
+            f'<p style="{_P}{_MUTED}font-size:12px;margin-top:16px">{escape(message.footer)}</p>'
+            if message.footer
+            else ""
         )
-        footer = f"<p><em>{escape(message.footer)}</em></p>" if message.footer else ""
         return (
-            f"<html><body><h3>{escape(message.title)}</h3>"
-            f'<ul style="font-family: monospace">{items}</ul>{footer}</body></html>'
+            f'<html><body style="{_BODY}"><div style="max-width:560px">'
+            f'<h2 style="font-size:20px;margin:0 0 12px">{escape(message.title)}</h2>'
+            f"{''.join(blocks)}{footer}</div></body></html>"
         )
+
+
+_BODY = "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2328;"
+_P = "margin:4px 0;"
+_MUTED = "color:#656d76;"
+_ROW = "margin:10px 0 2px;"
+_CARD = "border:1px solid #d0d7de;border-radius:10px;padding:12px 14px;margin:12px 0;"
+_OPTION = "font-size:16px;font-weight:600;margin-bottom:4px;"
+_BUTTON = (
+    "display:inline-block;background:#0969da;color:#ffffff;text-decoration:none;"
+    "padding:6px 12px;border-radius:6px;font-size:14px;"
+)

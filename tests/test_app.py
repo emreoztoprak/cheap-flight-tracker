@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 
 from cheap_flights.app import App
@@ -36,6 +37,19 @@ class Inbox:
     @property
     def titles(self):
         return [m.title for m in self.messages]
+
+    @property
+    def heads(self):
+        """Per message: the plain lines above the route summary (change, highlights)."""
+        out = []
+        for message in self.messages:
+            head = []
+            for line in message.lines:
+                if line.style != "text":
+                    break
+                head.append(line.text)
+            out.append(head)
+        return out
 
 
 class Fetcher:
@@ -78,16 +92,21 @@ def test_every_check_sends_a_report_with_the_change():
     app, store, inbox = build(priced(80), clock=hourly())
     stats = app.run_once()
     assert (stats.searches, stats.ok) == (2, 2)
-    assert inbox.titles == ["🔥 r1: 80 EUR — below your limit of 100 EUR  first check"]
+    assert inbox.titles == ["🔥 r1 — 80 €"]
+    assert inbox.heads[-1] == ["🆕 First check", "🎯 Under your 100 € limit"]
     app.run_once()
-    assert inbox.titles[-1] == "🔥 r1: 80 EUR — below your limit of 100 EUR  = same as last check"
+    assert inbox.heads[-1] == ["➖ Same as last check", "🎯 Under your 100 € limit"]
+    # footer: check time and the next scheduled check, in the configured time zone
+    footer = inbox.messages[-1].footer
+    assert re.fullmatch(r"Checked Sat 26 Sep 1\d:00 · next check Sat 26 Sep 18:00", footer)
     assert [a.price for a in store.alerts(5)] == [80, 80]
 
 
 def test_report_is_sent_above_the_limit_too():
     app, store, inbox = build(priced(150))
     app.run_once()
-    assert inbox.titles == ["✈️ r1: 150 EUR  first check"]
+    assert inbox.titles == ["✈️ r1 — 150 €"]
+    assert inbox.heads[-1] == ["🆕 First check"]
     assert store.route_lows("r1", "EUR", NOW - timedelta(1), NOW + timedelta(1)) == [150]
 
 
@@ -97,10 +116,10 @@ def test_price_increase_is_reported():
     app.run_once()
     price["now"] = 281
     app.run_once()
-    assert inbox.titles[-1] == "✈️ r1: 281 EUR  ↑ +35 EUR since last check (246 EUR)"
+    assert inbox.heads[-1] == ["📈 +35 € since last check (was 246 €)"]
     price["now"] = 261
     app.run_once()
-    assert inbox.titles[-1] == "✈️ r1: 261 EUR  ↓ −20 EUR since last check (281 EUR)"
+    assert inbox.heads[-1] == ["📉 −20 € since last check (was 281 €)"]
 
 
 def test_no_report_when_every_search_for_the_route_failed():
@@ -113,7 +132,8 @@ def test_no_report_when_every_search_for_the_route_failed():
 def test_no_flights_is_reported():
     app, _, inbox = build(lambda job: FetchResult(FetchKind.NO_FLIGHTS))
     app.run_once()
-    assert inbox.titles == ["✈️ r1: no flights found this check (2 searches)"]
+    assert inbox.titles == ["✈️ r1 — no flights found"]
+    assert inbox.heads[-1] == ["2 searches, nothing matched your filters"]
 
 
 def test_failed_delivery_is_not_logged_as_sent():
@@ -201,7 +221,7 @@ def test_run_offers_and_alert_reason_are_stored_for_the_dashboard():
     first = saved["offers"][0]
     assert first["line"].startswith("80 EUR  IST→LHR")
     assert first["url"].startswith("https://www.google.com/travel/flights")
-    assert store.alerts(5)[0].reason == "below your limit of 100 EUR"
+    assert store.alerts(5)[0].reason == "Under your 100 € limit"
 
 
 def test_crashed_run_is_recorded_too():

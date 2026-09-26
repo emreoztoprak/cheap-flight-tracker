@@ -9,6 +9,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
+from croniter import croniter
+
 from .config import Config
 from .evaluator import record_history, summarize, top_offers
 from .health import EventKind, advance, load_state, save_state
@@ -179,7 +181,16 @@ class App:
             # Nothing came back for this route (not searched, or every search failed):
             # a report would be misleading; failures are covered by health alerts.
             return
-        delivery = self._dispatcher.send(report_message(report))
+        tz = self._config.tz
+        checked = now.astimezone(tz)
+        message = report_message(
+            report,
+            places=resolved.places,
+            show_airports=resolved.multi_airport,
+            checked=checked,
+            next_check=croniter(self._config.schedule, checked).get_next(datetime),
+        )
+        delivery = self._dispatcher.send(message)
         if delivery.delivered:
             reason = "; ".join(report.highlights) or change_text(report)
             self._store.record_alert(

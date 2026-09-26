@@ -82,7 +82,7 @@ def test_valid_config_gives_schedule_and_runs(tmp_path):
     assert coordinator.schedule() == ("0 8 * * *", ZoneInfo("Europe/Madrid"))
     stats = coordinator.run("scheduled")
     assert stats.searches == 2 and fetcher.calls == 2
-    assert inbox.messages[0].title.startswith("🔥 r1: 80 EUR")
+    assert inbox.messages[0].title == "🔥 r1 — 80 €"
     assert coordinator.store.last_run().trigger == "scheduled"
 
 

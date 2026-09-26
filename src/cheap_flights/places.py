@@ -30,6 +30,12 @@ class ResolvedRoute:
     route: Route
     origins: tuple[Place, ...]
     destinations: tuple[Place, ...]
+    places: str = ""  # readable "Madrid (MAD) → Istanbul (IST)" for messages
+
+    @property
+    def multi_airport(self) -> bool:
+        """Several origins or destinations: each offer needs to say which airports it uses."""
+        return len(self.origins) > 1 or len(self.destinations) > 1
 
 
 def _is_airport_code(text: str) -> bool:
@@ -66,6 +72,11 @@ class PlaceIndex:
             ]
         entities = yaml.safe_load((data / "cities.yaml").read_text(encoding="utf-8"))
         return cls(airports, entities)
+
+    def describe(self, text: str) -> str:
+        """How to show a place the user typed: airport codes get their city, "Madrid (MAD)"."""
+        airport = self._airports.get(text) if _is_airport_code(text) else None
+        return f"{airport.city} ({airport.iata})" if airport and airport.city else text
 
     def suggest(self, query: str, limit: int = 8) -> list[tuple[str, str]]:
         """(value, label) pairs for autocomplete: city entities, then codes, then names."""
@@ -158,7 +169,11 @@ def resolve_routes(routes: Sequence[Route], index: PlaceIndex) -> list[ResolvedR
                         destinations.append(place)
             if not destinations:
                 raise ConfigError("no destinations left after removing the origin")
-            resolved.append(ResolvedRoute(route, tuple(origins), tuple(destinations)))
+            places = (
+                f"{index.describe(route.origin)} → "
+                f"{', '.join(index.describe(text) for text in route.to)}"
+            )
+            resolved.append(ResolvedRoute(route, tuple(origins), tuple(destinations), places))
         except ConfigError as exc:
             errors.append(f"routes.{route.name}: {exc}")
     if errors:

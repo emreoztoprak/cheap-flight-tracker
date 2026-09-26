@@ -33,7 +33,7 @@ def test_sends_html_message():
     assert body["parse_mode"] == "HTML"
     assert body["disable_web_page_preview"] is True
     assert body["text"] == (
-        '<b>✈️ Deal</b>\n<a href="https://g.test/?a=1&amp;b=2">1. 89 EUR</a>\n<i>footer</i>'
+        '<b>✈️ Deal</b>\n<a href="https://g.test/?a=1&amp;b=2">1. 89 EUR</a>\n\n<i>footer</i>'
     )
 
 
@@ -72,3 +72,32 @@ def test_connection_errors_never_leak_the_token():
         TelegramNotifier(TOKEN, "42", http).send(Message("t"))
     assert TOKEN not in str(info.value)
     assert "Telegram unreachable" in str(info.value)
+
+
+REPORT = Message(
+    "🔥 r1 — 80 €",
+    (
+        Line("➖ Same as last check"),
+        Line("IST → LHR · one way", style="note"),
+        Line("", style="gap"),
+        Line("🥇 80 € · Mon 02 Nov", style="option"),
+        Line("Pegasus · direct · 08:00 → 10:30", style="detail"),
+        Line("View on Google Flights ›", "https://g.test/?a=1&b=2", style="link"),
+    ),
+    "Checked Sat 26 Sep 22:40",
+)
+
+
+def test_report_layout_is_rendered_with_styles():
+    text = TelegramNotifier(TOKEN, "42", client()[0]).render(REPORT)
+    assert text == (
+        "<b>🔥 r1 — 80 €</b>\n"
+        "➖ Same as last check\n"
+        "<i>IST → LHR · one way</i>\n"
+        "\n"
+        "<b>🥇 80 € · Mon 02 Nov</b>\n"
+        "      Pegasus · direct · 08:00 → 10:30\n"
+        '      <a href="https://g.test/?a=1&amp;b=2">View on Google Flights ›</a>\n'
+        "\n"
+        "<i>Checked Sat 26 Sep 22:40</i>"
+    )

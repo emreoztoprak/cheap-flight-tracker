@@ -48,8 +48,8 @@ def test_limit_and_drop_are_highlights_not_filters():
     history(store, 200, 200, 200)
     report = summarize(route, [make_offer(90)], store, NOW, searches=1)
     assert report.highlights == (
-        "below your limit of 100 EUR",
-        "55% below the 30-day low of 200 EUR",
+        "Under your 100 € limit",
+        "55% below the 30-day low (200 €)",
     )
     quiet = summarize(route, [make_offer(190)], store, NOW, searches=1)
     assert quiet.highlights == () and quiet.best_price == 190

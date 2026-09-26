@@ -173,10 +173,26 @@ override the file.
 Every check sends one message per route, whatever the price, e.g.
 
 ```
-✈️ ist-to-europe: 281 EUR  ↑ +35 EUR since last check (246 EUR)
-🔥 weekend-rome: 95 EUR — below your limit of 120 EUR  ↓ −20 EUR since last check (115 EUR)
-✈️ ist-to-europe: no flights found this check (180 searches)
+🔥 madrid-to-istanbul — 281 €
+📈 +35 € since last check (was 246 €)
+🎯 Under your 500 € limit
+Madrid (MAD) → Istanbul (IST) · round trip · price for both ways
+
+🥇 281 € · Fri 23 Oct → Fri 30 Oct (7 nights)
+      Air Europa · direct · 09:10 → 13:55
+      View on Google Flights ›
+
+🥈 289 € · Wed 30 Sep → Wed 07 Oct (7 nights)
+      Turkish Airlines · direct · 07:40 → 13:00
+      View on Google Flights ›
+
+Checked Sat 26 Sep 22:40 · next check Sun 27 Sep 08:00
 ```
+
+The change line is 📈 up, 📉 down, ➖ same, or 🆕 for a route's first check. When Google has
+no flights for your filters the message says "no flights found". Routes with several origin or
+destination airports (cities, countries) also show the airports for each option. Emails get the
+same content as cards with a button per option.
 
 `alert` is optional: it only adds the 🔥 highlight. When every search for a route fails, no price
 message is sent for it — the health alerts below cover that.

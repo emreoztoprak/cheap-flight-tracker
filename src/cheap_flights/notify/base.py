@@ -6,15 +6,23 @@ import logging
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import IO, Protocol
+from typing import IO, Literal, Protocol
 
 log = logging.getLogger(__name__)
 
 
+Style = Literal["text", "note", "gap", "option", "detail", "link"]
+INDENT = "      "
+
+
 @dataclass(frozen=True)
 class Line:
+    """One line of a message. Channels render the style: an option heading, its indented
+    details and link, a muted note, or a blank gap between blocks."""
+
     text: str
     url: str | None = None
+    style: Style = "text"
 
 
 @dataclass(frozen=True)
@@ -26,9 +34,14 @@ class Message:
     def plain(self) -> str:
         out = [self.title, ""]
         for line in self.lines:
-            out.append(line.text)
-            if line.url:
-                out.append(f"   {line.url}")
+            if line.style == "link" and line.url:
+                out.append(f"{INDENT}{line.text.rstrip(' ›')}: {line.url}")
+            elif line.style == "detail":
+                out.append(INDENT + line.text)
+            else:
+                out.append(line.text)
+                if line.url:
+                    out.append(f"   {line.url}")
         if self.footer:
             out += ["", self.footer]
         return "\n".join(out)

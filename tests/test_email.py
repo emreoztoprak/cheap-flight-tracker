@@ -93,3 +93,28 @@ def test_connection_errors_become_notify_errors():
 
     with pytest.raises(NotifyError, match="ConnectionRefusedError"):
         EmailNotifier(config(), refuse).send(MESSAGE)
+
+
+def test_report_layout_in_plain_text_and_html():
+    from tests.test_telegram import REPORT
+
+    smtp = FakeSMTP()
+    EmailNotifier(config(), connector(smtp)[0]).send(REPORT)
+    (sent,) = smtp.sent
+    plain = sent.get_body(("plain",)).get_content()
+    assert plain == (
+        "🔥 r1 — 80 €\n\n"
+        "➖ Same as last check\n"
+        "IST → LHR · one way\n"
+        "\n"
+        "🥇 80 € · Mon 02 Nov\n"
+        "      Pegasus · direct · 08:00 → 10:30\n"
+        "      View on Google Flights: https://g.test/?a=1&b=2\n"
+        "\n"
+        "Checked Sat 26 Sep 22:40\n"
+    )
+    html = sent.get_body(("html",)).get_content()
+    assert "<h2" in html and "🔥 r1 — 80 €</h2>" in html
+    assert 'class="option"' in html and "🥇 80 € · Mon 02 Nov" in html
+    assert '<a class="button" href="https://g.test/?a=1&amp;b=2"' in html
+    assert html.count('class="option"') == 1

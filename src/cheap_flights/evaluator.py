@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from .config import Route
 from .models import Offer
+from .money import money
 from .store import Store
 
 HISTORY_WINDOW = timedelta(days=30)
@@ -46,14 +47,14 @@ def summarize(
         best = ranked[0].price
         rule = route.alert
         if rule.max_price is not None and best <= rule.max_price:
-            highlights.append(f"below your limit of {rule.max_price} {currency}")
+            highlights.append(f"Under your {money(rule.max_price, currency)} limit")
         if rule.drop_percent is not None:
             lows = store.route_lows(route.name, currency, since=now - HISTORY_WINDOW, before=now)
             if len(lows) >= MIN_HISTORY_RUNS:
                 low = min(lows)
                 if best <= low * (1 - rule.drop_percent / 100):
                     drop = round((1 - best / low) * 100)
-                    highlights.append(f"{drop}% below the 30-day low of {low} {currency}")
+                    highlights.append(f"{drop}% below the 30-day low ({money(low, currency)})")
     return Report(route, top_offers(ranked, route.top_n), previous, tuple(highlights), searches)
 
 

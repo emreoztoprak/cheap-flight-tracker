@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .config import Route
 from .evaluator import Report
 from .health import EventKind, HealthEvent
 from .models import Offer
+from .money import money
 from .notify.base import Line, Message
 
 
@@ -33,47 +35,100 @@ def offer_summary(offer: Offer) -> str:
     return text
 
 
-def offer_line(index: int, offer: Offer) -> Line:
-    return Line(text=f"{index}. {offer_summary(offer)}", url=offer.url)
+MEDALS = ("🥇", "🥈", "🥉")
+
+
+def _arrival(offer: Offer) -> str:
+    first, last = offer.legs[0], offer.legs[-1]
+    days_later = (last.arrive.date() - first.depart.date()).days
+    return f"{last.arrive:%H:%M}" + (f"+{days_later}" if days_later > 0 else "")
+
+
+def _option_lines(rank: int, offer: Offer, show_airports: bool) -> tuple[Line, ...]:
+    marker = MEDALS[rank - 1] if rank <= len(MEDALS) else f"{rank}."
+    heading = f"{marker} {money(offer.price, offer.currency)} · {offer.depart_date:%a %d %b}"
+    if offer.return_date is not None:
+        nights = (offer.return_date - offer.depart_date).days
+        heading += f" → {offer.return_date:%a %d %b} ({nights} night{'s' if nights != 1 else ''})"
+    first, last = offer.legs[0], offer.legs[-1]
+    details = [", ".join(offer.airlines) or first.airline, _stops(offer)]
+    details.append(f"{first.depart:%H:%M} → {_arrival(offer)}")
+    if show_airports:
+        details.insert(0, f"{first.origin}→{last.destination}")
+    return (
+        Line(heading, style="option"),
+        Line(" · ".join(details), style="detail"),
+        Line("View on Google Flights ›", offer.url, style="link"),
+    )
 
 
 def change_text(report: Report) -> str:
-    currency = report.route.currency
+    """The change since the previous check, in words (also stored in the History page)."""
     if report.previous is None:
         return "first check"
     change = report.change
     if change is None:
         return ""
     if change == 0:
-        return "= same as last check"
-    arrow, sign = ("↑", "+") if change > 0 else ("↓", "−")
-    return f"{arrow} {sign}{abs(change)} {currency} since last check ({report.previous} {currency})"
+        return "same as last check"
+    currency = report.route.currency
+    sign = "+" if change > 0 else "−"
+    was = money(report.previous, currency)
+    return f"{sign}{money(abs(change), currency)} since last check (was {was})"
 
 
-def report_message(report: Report) -> Message:
+def _change_line(report: Report) -> str:
+    if report.previous is None:
+        return "🆕 First check"
+    change = report.change or 0
+    icon = "📈" if change > 0 else "📉" if change < 0 else "➖"
+    text = change_text(report)
+    return f"{icon} {text[0].upper()}{text[1:]}"
+
+
+def report_message(
+    report: Report,
+    *,
+    places: str = "",
+    show_airports: bool = False,
+    checked: datetime | None = None,
+    next_check: datetime | None = None,
+) -> Message:
     """The message sent after every check, one per route."""
     route = report.route
+    footer = f"Checked {checked:%a %d %b %H:%M}" if checked else ""
+    if checked and next_check:
+        footer += f" · next check {next_check:%a %d %b %H:%M}"
+    summary = _route_summary(route, places)
     if not report.offers:
         return Message(
-            title=f"✈️ {route.name}: no flights found this check ({report.searches} searches)",
-            lines=(Line(_route_summary(route)),),
+            title=f"✈️ {route.name} — no flights found",
+            lines=(
+                Line(f"{report.searches} searches, nothing matched your filters"),
+                Line(summary, style="note"),
+            ),
+            footer=footer,
         )
     icon = "🔥" if report.highlights else "✈️"
-    title = f"{icon} {route.name}: {report.best_price} {route.currency}"
-    if report.highlights:
-        title += " — " + "; ".join(report.highlights)
-    title += f"  {change_text(report)}"
     best = report.offers[0]
-    footer = "Round-trip prices are the total for both directions." if best.return_date else ""
-    lines = (Line(_route_summary(route)),) + tuple(
-        offer_line(index, offer) for index, offer in enumerate(report.offers, start=1)
+    lines = [Line(_change_line(report))]
+    lines += [Line(f"🎯 {highlight}") for highlight in report.highlights]
+    if best.return_date is not None:
+        summary += " · price for both ways"
+    lines.append(Line(summary, style="note"))
+    for rank, offer in enumerate(report.offers, start=1):
+        lines.append(Line("", style="gap"))
+        lines += _option_lines(rank, offer, show_airports)
+    return Message(
+        title=f"{icon} {route.name} — {money(best.price, route.currency)}",
+        lines=tuple(lines),
+        footer=footer,
     )
-    return Message(title=title, lines=lines, footer=footer)
 
 
-def _route_summary(route: Route) -> str:
+def _route_summary(route: Route, places: str) -> str:
     trip = "one way" if route.trip == "one-way" else "round trip"
-    return f"{route.origin} → {', '.join(route.to)} · {trip}"
+    return f"{places or f'{route.origin} → {", ".join(route.to)}'} · {trip}"
 
 
 def check_message() -> Message:

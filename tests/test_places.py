@@ -61,6 +61,21 @@ def test_resolve_routes_drops_destinations_equal_to_origin():
     assert [p.code for p in resolved.destinations] == ["ESB", "SAW"]
 
 
+def test_describe_names_airport_codes_by_city():
+    assert INDEX.describe("IST") == "Istanbul (IST)"
+    assert INDEX.describe("London") == "London"
+    assert INDEX.describe("DE") == "DE"
+
+
+def test_resolved_route_carries_a_readable_summary():
+    (one,) = resolve_routes([make_route(to=["LHR"])], INDEX)
+    assert one.places == "Istanbul (IST) → London (LHR)"
+    assert not one.multi_airport
+    (many,) = resolve_routes([make_route(to=["LHR", "DE"])], INDEX)
+    assert many.places == "Istanbul (IST) → London (LHR), DE"
+    assert many.multi_airport
+
+
 def test_resolve_routes_reports_every_bad_route():
     routes = [make_route(name="a", to=["XXX"]), make_route(name="b", origin="DE")]
     with pytest.raises(ConfigError) as info:

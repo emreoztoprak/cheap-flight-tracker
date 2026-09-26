@@ -6,7 +6,7 @@ from html import escape
 
 import httpx
 
-from .base import Message, NotifyError
+from .base import INDENT, Line, Message, NotifyError
 
 API_URL = "https://api.telegram.org"
 MAX_LENGTH = 4096
@@ -30,9 +30,9 @@ class TelegramNotifier:
     def render(self, message: Message) -> str:
         parts = [f"<b>{escape(message.title[:500], quote=False)}</b>"]
         for line in message.lines:
-            text = escape(line.text, quote=False)
-            parts.append(f'<a href="{escape(line.url)}">{text}</a>' if line.url else text)
+            parts.append(_render_line(line))
         if message.footer:
+            parts.append("")
             parts.append(f"<i>{escape(message.footer, quote=False)}</i>")
         body = parts[0]
         for part in parts[1:]:
@@ -65,6 +65,19 @@ class TelegramNotifier:
 
     def _hide(self, text: str) -> str:
         return text.replace(self._token, "***")
+
+
+def _render_line(line: Line) -> str:
+    text = escape(line.text, quote=False)
+    if line.url:
+        text = f'<a href="{escape(line.url)}">{text}</a>'
+    if line.style == "option":
+        return f"<b>{text}</b>"
+    if line.style == "note":
+        return f"<i>{text}</i>"
+    if line.style in ("detail", "link"):
+        return INDENT + text
+    return text
 
 
 def _description(response: httpx.Response) -> str:
