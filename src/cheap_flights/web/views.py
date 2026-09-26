@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from croniter import croniter
 
+from ..config import DEFAULT_TIMEZONE
 from ..coordinator import Coordinator, Progress
 from ..health import load_state
 from ..store import RunRecord
@@ -35,7 +36,7 @@ class Status:
 
 def tz_of(coordinator: Coordinator) -> ZoneInfo:
     loaded = coordinator.loaded
-    return loaded.config.tz if loaded else ZoneInfo("UTC")
+    return loaded.config.tz if loaded else ZoneInfo(DEFAULT_TIMEZONE)
 
 
 def fmt(moment: datetime | None, tz: ZoneInfo, pattern: str = "%a %d %b %H:%M") -> str:

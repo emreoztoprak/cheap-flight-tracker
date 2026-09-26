@@ -48,6 +48,7 @@ def test_minimal_config_gets_defaults(tmp_path):
     assert route.max_stops is None
     assert route.top_n == 3
     assert config.schedule == "0 */6 * * *"
+    assert config.timezone == "Europe/Madrid"
     assert config.search.max_searches_per_run == 2000
     assert config.notify.telegram.chat_id == "42"
     assert config.secrets() == ["123456:abcdefghij"]

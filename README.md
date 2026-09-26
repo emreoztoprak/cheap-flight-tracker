@@ -63,6 +63,10 @@ change the settings.
 **File ownership.** The container runs as the owner of the `./config` folder, so the files stay
 editable by you. Set `PUID` / `PGID` environment variables to choose a different user.
 
+**Time zone.** Everything uses `Europe/Madrid` by default: the schedule, dates, and times in the
+dashboard and messages (change it under Settings → Time zone). Log timestamps follow the
+container's `TZ` variable, also `Europe/Madrid` by default.
+
 Without compose:
 
 ```bash
@@ -137,7 +141,7 @@ override the file.
 | Key | Default | Meaning |
 |---|---|---|
 | `schedule` | `0 */6 * * *` | Cron expression for checks (a check also runs at startup) |
-| `timezone` | `UTC` | Time zone for the schedule, "today", and health alert times |
+| `timezone` | `Europe/Madrid` | Time zone for the schedule, "today", and times shown in the dashboard and messages |
 | `history_days` | `90` | How long prices, sent messages and runs are kept (31–3650); older data is deleted after each run. The History chart shows this whole period |
 | `defaults` | – | Route settings every route inherits; a key set on a route replaces the default |
 | `search` | – | See below |

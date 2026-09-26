@@ -87,7 +87,13 @@ def env(tmp_path):
 
     buffer = LogBuffer()
     configure_logging("INFO", "text", [TOKEN, PASSWORD], buffer=buffer)
-    app = create_app(coordinator, buffer, make_notifier=make_notifier, allowed_hosts=["testserver"])
+    app = create_app(
+        coordinator,
+        buffer,
+        make_notifier=make_notifier,
+        clock=lambda: NOW,
+        allowed_hosts=["testserver"],
+    )
     client = TestClient(app, headers={"Origin": "http://testserver"})
     return client, coordinator, files, inbox, tested
 
@@ -300,6 +306,13 @@ def test_raw_yaml_editor(env):
     )
     assert coordinator.schedule()[0] == "0 7 * * *"
     assert "not valid YAML" in client.post("/settings/raw", data={"text": "a: ["}).text
+
+
+def test_cron_preview_defaults_to_madrid_time(env):
+    client = configured(env)[0]
+    # NOW is 12:00 UTC = 14:00 in Madrid: 13:00 today has passed in Madrid (not in UTC)
+    preview = client.get("/settings/cron", params={"schedule": "0 13 * * *", "timezone": ""})
+    assert "Next runs (Europe/Madrid): Sun 27 Sep 13:00" in preview.text
 
 
 def test_cron_preview(env):

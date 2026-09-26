@@ -16,7 +16,7 @@
     <div class="form-grid">
       {{ field("schedule", "Cron expression", v["schedule"], e, placeholder="0 */6 * * *",
          help="minute hour day month weekday", attrs='data-cron-input hx-get="/settings/cron" hx-trigger="load, input changed delay:300ms" hx-target="#cron-preview" hx-include="[name=timezone]"') }}
-      {{ field("timezone", "Time zone", v["timezone"], e, placeholder="UTC", help="e.g. Europe/Madrid",
+      {{ field("timezone", "Time zone", v["timezone"], e, placeholder="Europe/Madrid", help="Default Europe/Madrid. Used for the schedule, dates and times shown",
          attrs='hx-get="/settings/cron" hx-trigger="input changed delay:300ms" hx-target="#cron-preview" hx-include="[name=schedule]"') }}
     </div>
     <p id="cron-preview" class="estimate"></p>

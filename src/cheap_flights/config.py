@@ -26,6 +26,7 @@ class ConfigError(Exception):
     """The configuration is missing, unreadable or invalid."""
 
 
+DEFAULT_TIMEZONE = "Europe/Madrid"
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _ENV_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -269,7 +270,7 @@ class LoggingConfig(_Model):
 
 class Config(_Model):
     schedule: str = "0 */6 * * *"
-    timezone: str = "UTC"
+    timezone: str = DEFAULT_TIMEZONE
     history_days: int = Field(default=90, ge=31, le=3650)  # the drop rule needs 30 days
     search: SearchSettings = SearchSettings()
     routes: tuple[Route, ...] = Field(min_length=1)

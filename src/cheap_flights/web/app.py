@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from ..config import WEEKDAYS, ConfigError, EmailConfig, Route
+from ..config import DEFAULT_TIMEZONE, WEEKDAYS, ConfigError, EmailConfig, Route
 from ..coordinator import Coordinator
 from ..logging_setup import LogBuffer
 from ..messages import check_message
@@ -257,7 +257,7 @@ def create_app(
             return HTMLResponse(
                 '<span class="muted">Fill in from, to and dates to see the search count.</span>'
             )
-        today = clock().astimezone(ZoneInfo("UTC")).date()
+        today = clock().astimezone(views.tz_of(coordinator)).date()
         plan = build_plan([ResolvedRoute(route, tuple(origins), tuple(destinations))], today, 10**9)
         return HTMLResponse(f"≈ <strong>{plan.requested}</strong> searches per run")
 
@@ -508,16 +508,17 @@ def create_app(
         )
 
     @app.get("/settings/cron", response_class=HTMLResponse)
-    def cron_preview(schedule: str = "", timezone: str = "UTC"):
+    def cron_preview(schedule: str = "", timezone: str = ""):
         if not croniter.is_valid(schedule):
             return HTMLResponse('<span class="result bad">not a valid cron expression</span>')
         try:
-            tz = ZoneInfo(timezone or "UTC")
+            timezone = timezone.strip() or DEFAULT_TIMEZONE
+            tz = ZoneInfo(timezone)
         except (ZoneInfoNotFoundError, ValueError):
             return HTMLResponse('<span class="result bad">unknown time zone</span>')
         it = croniter(schedule, clock().astimezone(tz))
         upcoming = ", ".join(it.get_next(datetime).strftime("%a %d %b %H:%M") for _ in range(3))
-        return HTMLResponse(f'<span class="muted">Next runs: {upcoming}</span>')
+        return HTMLResponse(f'<span class="muted">Next runs ({timezone}): {upcoming}</span>')
 
     # --- history --------------------------------------------------------------------------
 
