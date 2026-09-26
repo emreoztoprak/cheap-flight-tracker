@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block head %}<script src="/static/chart.umd.min.js" defer></script>{% endblock %}
+{% block content %}
+<header class="page-head"><h1>History</h1></header>
+<section class="card">
+  <div class="card-head"><h2>Prices</h2>
+    {% if names %}
+    <select data-history-route>
+      {% for name in names %}<option value="{{ name }}" {% if name == selected %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+  </div>
+  {% if names %}<div class="chart-box"><canvas id="history-chart"></canvas></div>
+  <p class="muted small">Cheapest price per destination at each run, last 90 days.</p>
+  {% else %}<p class="muted">No routes yet.</p>{% endif %}
+</section>
+
+<section class="card table-card"><h2>Alerts sent</h2>
+  <table><thead><tr><th>When</th><th>Route</th><th>Price</th><th>Why</th></tr></thead><tbody>
+  {% for alert in alerts %}
+    <tr><td>{{ fmt(alert.sent_at, tz) }}</td><td>{{ alert.route }}</td><td>{{ alert.price }} {{ alert.currency }}</td><td class="muted">{{ alert.reason }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No alerts yet.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+<section class="card table-card"><h2>Recent runs</h2>
+  <table><thead><tr><th>Started</th><th>Took</th><th>Result</th><th>Trigger</th></tr></thead><tbody>
+  {% for run in runs %}
+    <tr><td>{{ fmt(run.started_at, tz) }}</td><td>{{ ((run.finished_at - run.started_at).total_seconds() // 60)|int }} min</td>
+        <td>{{ run_summary(run) }}{% if run.failures %} <span class="badge bad">{{ run.failures|dictsort|map('join', ': ')|join(', ') }}</span>{% endif %}</td>
+        <td>{{ run.trigger }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No runs yet.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+<section class="card"><div class="card-head"><h2>Log</h2>
+  <select name="level" hx-get="/partials/logs" hx-target="#logs" hx-trigger="change">
+    <option value="DEBUG">Debug and up</option><option value="INFO" selected>Info and up</option><option value="WARNING">Warnings and errors</option><option value="ERROR">Errors</option>
+  </select></div>
+  <div id="logs" hx-get="/partials/logs?level=INFO" hx-trigger="load, every 10s"></div>
+</section>
+{% endblock %}

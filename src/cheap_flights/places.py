@@ -67,6 +67,10 @@ class PlaceIndex:
         entities = yaml.safe_load((data / "cities.yaml").read_text(encoding="utf-8"))
         return cls(airports, entities)
 
+    def suggest(self, query: str, limit: int = 8) -> list[tuple[str, str]]:
+        """(value, label) pairs for autocomplete: city entities, then codes, then names."""
+        return _suggest(self, query, limit)
+
     def resolve_origin(self, text: str) -> list[Place]:
         text = text.strip()
         if _is_country_code(text):
@@ -114,6 +118,29 @@ class PlaceIndex:
             f"unknown place {text!r}{hint}; "
             "use an airport code like LHR, a city name, or a country code like DE"
         )
+
+
+def _label(airport: Airport) -> str:
+    return f"{airport.iata} — {airport.name} ({airport.city}, {airport.country})"
+
+
+def _suggest(index: PlaceIndex, query: str, limit: int) -> list[tuple[str, str]]:
+    text = query.strip().casefold()
+    if len(text) < 2:
+        return []
+    found: list[tuple[str, str]] = []
+    for key, (name, _entity) in sorted(index._entities.items()):
+        if key.startswith(text):
+            found.append((name, f"{name} — all airports"))
+    airports = sorted(index._airports.values(), key=_by_size)
+    for airport in airports:
+        if airport.iata.casefold().startswith(text):
+            found.append((airport.iata, _label(airport)))
+    for airport in airports:
+        haystack = f"{airport.name} {airport.city}".casefold()
+        if not airport.iata.casefold().startswith(text) and text in haystack:
+            found.append((airport.iata, _label(airport)))
+    return found[:limit]
 
 
 def resolve_routes(routes: Sequence[Route], index: PlaceIndex) -> list[ResolvedRoute]:

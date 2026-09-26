@@ -1,0 +1,77 @@
+{% from "_macros.html" import field, select %}
+{% set e = field_errors %}
+<div class="form-grid">
+  {{ field("name", "Name", route.name, e, help="Letters, digits, - _ . (used to track history)", attrs='required pattern="[A-Za-z0-9_.\\-]+"') }}
+  <div class="field-wrap">
+    {{ field("origin", "From", route.origin, e, help="Airport code (MAD) or city (Madrid)",
+       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#origin-places" hx-vals=\'js:{q: event.target.value, target: "origin"}\'') }}
+    <div class="places" id="origin-places"></div>
+  </div>
+  <div class="field-wrap wide">
+    {{ field("to", "To", route.to, e, help="Comma-separated airports, cities or country codes — e.g. EZE, London, DE",
+       attrs='required autocomplete="off" hx-get="/places" hx-trigger="input changed delay:250ms" hx-target="#to-places" hx-vals=\'js:{q: lastToken(event.target.value), target: "to"}\'') }}
+    <div class="places" id="to-places"></div>
+  </div>
+</div>
+
+<fieldset>
+  <legend>Trip</legend>
+  <div class="form-grid">
+    {{ select("trip", "Type", route.trip, [("round-trip", "Round trip"), ("one-way", "One way")], e, attrs='data-trip') }}
+    <div class="pair" data-round-trip-only>
+      {{ field("nights_min", "Nights from", route.nights_min, e, "number", attrs='min="1" max="30"') }}
+      {{ field("nights_max", "to", route.nights_max, e, "number", attrs='min="1" max="30"') }}
+    </div>
+    {{ select("stops", "Connections", route.stops, [("any", "Any"), ("max_1", "At most 1 stop"), ("direct", "Direct only")], e) }}
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>When</legend>
+  <div class="segmented">
+    <label><input type="radio" name="window_mode" value="next" {% if route.window_mode != 'range' %}checked{% endif %} data-window> Next N days</label>
+    <label><input type="radio" name="window_mode" value="range" {% if route.window_mode == 'range' %}checked{% endif %} data-window> Date range</label>
+  </div>
+  <div class="form-grid">
+    <div data-window-next>{{ field("next_days", "Days ahead", route.next_days, e, "number", attrs='min="1" max="330"') }}</div>
+    <div class="pair" data-window-range>
+      {{ field("date_from", "From date", route.date_from, e, "date") }}
+      {{ field("date_to", "To date", route.date_to, e, "date") }}
+    </div>
+    <div class="pair">
+      {{ field("depart_from", "Depart after (hour)", route.depart_from, e, "number", attrs='min="0" max="23"', placeholder="any") }}
+      {{ field("depart_to", "Depart before (hour)", route.depart_to, e, "number", attrs='min="0" max="23"', placeholder="any") }}
+    </div>
+  </div>
+  <div class="field{% if e.get('weekdays') %} has-error{% endif %}">
+    <span class="label">Departure days <span class="muted">(none = any day)</span></span>
+    <div class="chips">
+      {% for day in weekdays %}
+      <label class="chip"><input type="checkbox" name="weekdays" value="{{ day }}" {% if day in route.weekdays %}checked{% endif %}> {{ day|capitalize }}</label>
+      {% endfor %}
+    </div>
+    {% if e.get('weekdays') %}<span class="error-text">{{ e.weekdays }}</span>{% endif %}
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Alert me when</legend>
+  <div class="form-grid">
+    {{ field("max_price", "Price is at or below", route.max_price, e, "number", help="In the route currency; round trips are the total", attrs='min="1"') }}
+    {{ field("drop_percent", "Or drops by % vs. 30-day low", route.drop_percent, e, "number", help="Needs 3 earlier runs of history", attrs='min="1" max="99" step="0.5"') }}
+  </div>
+</fieldset>
+
+<details class="advanced">
+  <summary>More options</summary>
+  <div class="form-grid">
+    {{ field("currency", "Currency", route.currency, e, help="3-letter code, e.g. EUR", attrs='maxlength="3"') }}
+    {{ field("adults", "Adults", route.adults, e, "number", attrs='min="1" max="9"') }}
+    {{ field("children", "Children", route.children, e, "number", attrs='min="0" max="8"') }}
+    {{ field("top_n", "Options per alert", route.top_n, e, "number", attrs='min="1" max="10"') }}
+    {{ field("max_airports_per_country", "Airports per country", route.max_airports_per_country, e, "number", help="For country destinations like DE", attrs='min="1" max="50"') }}
+  </div>
+</details>
+
+<p class="estimate" id="estimate" hx-post="/routes/estimate" hx-trigger="load, change from:closest form, input from:closest form delay:500ms"
+   hx-include="closest form"></p>

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, select, general %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+{% set e = field_errors %}{% set v = values %}
+<header class="page-head"><h1>Settings</h1></header>
+{{ general(general_errors) }}
+<form method="post" action="/settings" class="stack">
+  <section class="card"><h2>Schedule</h2>
+    <div class="presets">
+      <button type="button" class="chip" data-cron="0 */6 * * *">Every 6 hours</button>
+      <button type="button" class="chip" data-cron="0 8,20 * * *">08:00 and 20:00</button>
+      <button type="button" class="chip" data-cron="0 8 * * *">Daily at 08:00</button>
+      <button type="button" class="chip" data-cron="0 */2 * * *">Every 2 hours</button>
+    </div>
+    <div class="form-grid">
+      {{ field("schedule", "Cron expression", v["schedule"], e, placeholder="0 */6 * * *",
+         help="minute hour day month weekday", attrs='data-cron-input hx-get="/settings/cron" hx-trigger="load, input changed delay:300ms" hx-target="#cron-preview" hx-include="[name=timezone]"') }}
+      {{ field("timezone", "Time zone", v["timezone"], e, placeholder="UTC", help="e.g. Europe/Madrid",
+         attrs='hx-get="/settings/cron" hx-trigger="input changed delay:300ms" hx-target="#cron-preview" hx-include="[name=schedule]"') }}
+    </div>
+    <p id="cron-preview" class="estimate"></p>
+  </section>
+
+  <section class="card"><h2>Route defaults</h2>
+    <p class="muted">Every route uses these unless it sets its own value. Empty = built-in default.</p>
+    <div class="form-grid">
+      {{ field("defaults.currency", "Currency", v["defaults.currency"], e, placeholder="EUR") }}
+      {{ select("defaults.trip", "Trip", v["defaults.trip"], [("", "Built-in (round trip)"), ("round-trip", "Round trip"), ("one-way", "One way")], e) }}
+      {{ field("defaults.nights", "Nights", v["defaults.nights"], e, placeholder="3-7", help="A number or a range like 3-7") }}
+      {{ field("defaults.next_days", "Days ahead", v["defaults.next_days"], e, "number", placeholder="90") }}
+      {{ select("defaults.stops", "Connections", v["defaults.stops"], [("", "Built-in (any)"), ("any", "Any"), ("max_1", "At most 1 stop"), ("direct", "Direct only")], e) }}
+      {{ field("defaults.adults", "Adults", v["defaults.adults"], e, "number", placeholder="1") }}
+      {{ field("defaults.top_n", "Options per alert", v["defaults.top_n"], e, "number", placeholder="3") }}
+    </div>
+  </section>
+
+  <section class="card"><h2>Searching</h2>
+    <div class="form-grid">
+      {{ field("search.delay_seconds", "Pause between searches (s)", v["search.delay_seconds"], e, placeholder="1.0", help="Higher is gentler on Google") }}
+      {{ field("search.max_searches_per_run", "Max searches per run", v["search.max_searches_per_run"], e, "number", placeholder="2000", help="Above this, dates are thinned evenly") }}
+      {{ field("search.retries", "Retries per search", v["search.retries"], e, "number", placeholder="3") }}
+      {{ field("search.timeout_seconds", "Timeout per search (s)", v["search.timeout_seconds"], e, placeholder="20") }}
+    </div>
+  </section>
+
+  <section class="card"><h2>Health alerts</h2>
+    <div class="form-grid">
+      {{ field("health.alert_after_failed_runs", "Alert after failed runs in a row", v["health.alert_after_failed_runs"], e, "number", placeholder="2") }}
+      {{ field("health.reminder_hours", "Remind every (hours) while broken", v["health.reminder_hours"], e, placeholder="24") }}
+    </div>
+  </section>
+
+  <section class="card"><h2>Logging</h2>
+    <div class="form-grid">
+      {{ select("logging.level", "Level", v["logging.level"], [("", "Built-in (INFO)"), ("DEBUG", "DEBUG — every search"), ("INFO", "INFO"), ("WARNING", "WARNING"), ("ERROR", "ERROR")], e) }}
+      {{ select("logging.format", "Format", v["logging.format"], [("", "Built-in (text)"), ("text", "Text"), ("json", "JSON")], e) }}
+      {{ field("logging.file", "Log file", v["logging.file"], e, placeholder="logs/cheap-flights.log", help="Relative to /data; “none” = no file") }}
+      {{ field("logging.max_size_mb", "Rotate at (MB)", v["logging.max_size_mb"], e, placeholder="10") }}
+      {{ field("logging.backups", "Old files kept", v["logging.backups"], e, "number", placeholder="5") }}
+    </div>
+  </section>
+  <div class="form-actions"><button class="primary">Save settings</button></div>
+</form>
+
+<form method="post" action="/settings/raw" class="card stack" id="raw">
+  <h2>Edit config.yaml directly</h2>
+  <p class="muted">For advanced changes. Saving from the forms above rewrites this file and drops comments. Secrets belong in <code>.env</code> as <code>${NAME}</code> references.</p>
+  {% if raw_errors %}<div class="banner error"><strong>Not saved.</strong><ul>{% for m in raw_errors %}<li>{{ m }}</li>{% endfor %}</ul></div>{% endif %}
+  <textarea name="text" rows="18" spellcheck="false">{{ raw_text }}</textarea>
+  <div class="form-actions"><button class="primary">Validate and save</button></div>
+</form>
+{% endblock %}

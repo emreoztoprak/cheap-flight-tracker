@@ -1,0 +1,23 @@
+<section class="card status status-{{ status.state }}" id="status"
+         hx-get="/partials/status" hx-trigger="every {{ '2s' if status.state == 'running' else '30s' }}" hx-swap="outerHTML">
+  <div class="status-main">
+    <span class="dot"></span>
+    <div>
+      <h2>{{ status.headline }}</h2>
+      <p class="muted">{{ status.detail }}</p>
+      {% if status.state == 'running' and status.progress.total %}
+      <progress max="{{ status.progress.total }}" value="{{ status.progress.done }}"></progress>
+      {% endif %}
+    </div>
+  </div>
+  <dl class="facts">
+    <div><dt>Last run</dt><dd>{% if status.last_run %}{{ fmt(status.last_run.started_at, status.tz) }}
+      <span class="muted">· {{ run_summary(status.last_run) }} · {{ status.last_run.trigger }}</span>{% else %}—{% endif %}</dd></div>
+    <div><dt>Next run</dt><dd>{{ fmt(status.next_run, status.tz) }}</dd></div>
+  </dl>
+  <div class="status-actions">
+    <button class="primary" hx-post="/run" hx-target="#status" hx-swap="outerHTML"
+            {% if status.state in ('running', 'setup') %}disabled{% endif %}>Run now</button>
+    {% if note %}<span class="muted">{{ note }}</span>{% endif %}
+  </div>
+</section>

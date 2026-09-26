@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_macros.html" import general %}
+{% block title %}{{ 'New route' if index is none else route.name }}{% endblock %}
+{% block content %}
+<header class="page-head"><h1>{{ 'New route' if index is none else 'Edit ' ~ route.name }}</h1><a class="ghost button" href="/routes">Back</a></header>
+{{ general(general_errors) }}
+{% if field_errors %}<div class="banner error">Not saved — fix the highlighted fields.</div>{% endif %}
+<form method="post" action="/routes/{{ 'new' if index is none else index }}" class="card stack">
+  {% include "_route_fields.html" %}
+  <div class="form-actions"><button class="primary">Save route</button></div>
+</form>
+{% endblock %}

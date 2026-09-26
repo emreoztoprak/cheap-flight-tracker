@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Routes{% endblock %}
+{% block content %}
+<header class="page-head"><h1>Routes</h1><a class="button primary" href="/routes/new">Add route</a></header>
+{% if error %}<div class="banner error">{{ error }}</div>{% endif %}
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Name</th><th>Route</th><th>When</th><th>Alert</th><th></th></tr></thead>
+    <tbody>
+    {% for route in routes %}
+      <tr>
+        <td><a href="/routes/{{ loop.index0 }}"><strong>{{ route.name }}</strong></a></td>
+        <td>{{ route.origin }} → {{ route.to }}<br><span class="muted small">{{ 'Round trip, ' ~ route.nights_min ~ ('–' ~ route.nights_max if route.nights_max != route.nights_min else '') ~ ' nights' if route.trip == 'round-trip' else 'One way' }} · {{ {'any': 'any stops', 'max_1': '≤1 stop', 'direct': 'direct'}[route.stops] }}</span></td>
+        <td>{% if route.window_mode == 'range' %}{{ route.date_from }} → {{ route.date_to }}{% else %}next {{ route.next_days }} days{% endif %}</td>
+        <td>{% if route.max_price %}≤ {{ route.max_price }} {{ route.currency }}{% endif %}{% if route.max_price and route.drop_percent %}<br>{% endif %}{% if route.drop_percent %}−{{ route.drop_percent }}%{% endif %}</td>
+        <td class="actions">
+          <a class="ghost small button" href="/routes/{{ loop.index0 }}">Edit</a>
+          <form method="post" action="/routes/{{ loop.index0 }}/duplicate"><button class="ghost small">Duplicate</button></form>
+          <form method="post" action="/routes/{{ loop.index0 }}/delete" onsubmit="return confirm('Delete {{ route.name }}?')"><button class="ghost small danger">Delete</button></form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No routes yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

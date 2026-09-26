@@ -1,0 +1,39 @@
+{% macro field(name, label, value="", errors={}, type="text", help="", attrs="", placeholder="") -%}
+<label class="field{% if errors.get(name) %} has-error{% endif %}">
+  <span class="label">{{ label }}</span>
+  <input type="{{ type }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" {{ attrs|safe }}>
+  {% if errors.get(name) %}<span class="error-text">{{ errors[name] }}</span>
+  {% elif help %}<span class="help">{{ help }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro select(name, label, value, options, errors={}, help="", attrs="") -%}
+<label class="field{% if errors.get(name) %} has-error{% endif %}">
+  <span class="label">{{ label }}</span>
+  <select name="{{ name }}" {{ attrs|safe }}>
+    {% for option_value, option_label in options %}
+    <option value="{{ option_value }}" {% if option_value == value %}selected{% endif %}>{{ option_label }}</option>
+    {% endfor %}
+  </select>
+  {% if errors.get(name) %}<span class="error-text">{{ errors[name] }}</span>
+  {% elif help %}<span class="help">{{ help }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro secret(name, label, has_value, errors={}, help="") -%}
+<label class="field{% if errors.get(name) %} has-error{% endif %}">
+  <span class="label">{{ label }}</span>
+  <span class="secret">
+    <input type="password" name="{{ name }}" value="" autocomplete="off"
+           placeholder="{{ 'Saved — leave empty to keep' if has_value else '' }}">
+    <button type="button" class="ghost small" data-toggle-secret>Show</button>
+  </span>
+  {% if errors.get(name) %}<span class="error-text">{{ errors[name] }}</span>
+  {% elif help %}<span class="help">{{ help }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro general(errors) -%}
+{% if errors %}<div class="banner error"><strong>Not saved.</strong>
+  <ul>{% for message in errors %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
+{%- endmacro %}

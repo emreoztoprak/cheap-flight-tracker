@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · Cheap Flight Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  {% block head %}{% endblock %}
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="logo">✈</span> Cheap Flight Tracker</a>
+    <nav>
+      <a href="/" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>
+      <a href="/routes" class="{{ 'active' if active == 'routes' }}">Routes</a>
+      <a href="/notifications" class="{{ 'active' if active == 'notifications' }}">Notifications</a>
+      <a href="/settings" class="{{ 'active' if active == 'settings' }}">Settings</a>
+      <a href="/history" class="{{ 'active' if active == 'history' }}">History</a>
+    </nav>
+  </aside>
+  <main>
+    {% if config_error %}
+    <div class="banner error"><strong>config.yaml has a problem — the last working settings are still in use.</strong>
+      <pre>{{ config_error }}</pre>
+      <a href="/settings#raw">Fix it in the file editor</a></div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if saved %}<div class="toast" role="status">Saved — applies from the next run</div>{% endif %}
+</body>
+</html>

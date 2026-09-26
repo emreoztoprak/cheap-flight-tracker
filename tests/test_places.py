@@ -75,3 +75,13 @@ def test_bundled_index_loads():
     assert index.resolve_destination("London", 10) == [Place("London", "/m/04jpl")]
     germany = [p.code for p in index.resolve_destination("DE", 10)]
     assert {"FRA", "MUC", "BER", "HAM"} <= set(germany) and len(germany) == 10
+
+
+def test_suggestions_match_codes_cities_and_names():
+    assert INDEX.suggest("lon")[0] == ("London", "London — all airports")
+    assert ("LHR", "LHR — Heathrow (London, GB)") in INDEX.suggest("lon")
+    assert INDEX.suggest("MU")[0] == ("MUC", "MUC — Munich (Munich, DE)")  # codes first
+    assert ("DTM", "DTM — Dortmund (Dortmund, DE)") in INDEX.suggest("MU")  # then names
+    assert INDEX.suggest("heath") == [("LHR", "LHR — Heathrow (London, GB)")]
+    assert INDEX.suggest("x") == []  # too short to be useful
+    assert len(INDEX.suggest("an", limit=2)) == 2

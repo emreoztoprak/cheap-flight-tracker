@@ -1,0 +1,22 @@
+{% from "_macros.html" import field, secret %}
+{% set e = field_errors %}
+<fieldset class="channel">
+  <legend><label class="switch"><input type="checkbox" name="telegram_enabled" {% if notify.telegram_enabled %}checked{% endif %} data-channel> Telegram</label></legend>
+  <div class="form-grid" data-channel-body>
+    {{ secret("telegram_bot_token", "Bot token", notify.telegram_has_token, e, help="From @BotFather") }}
+    {{ field("telegram_chat_id", "Chat ID", notify.telegram_chat_id, e, help="Message your bot, then see api.telegram.org/bot&lt;token&gt;/getUpdates") }}
+    <div class="test-row"><button type="button" class="ghost small" hx-post="/notifications/test/telegram" hx-include="closest form" hx-target="next .result-slot">Send test</button><span class="result-slot"></span></div>
+  </div>
+</fieldset>
+<fieldset class="channel">
+  <legend><label class="switch"><input type="checkbox" name="email_enabled" {% if notify.email_enabled %}checked{% endif %} data-channel> Email</label></legend>
+  <div class="form-grid" data-channel-body>
+    {{ field("smtp_host", "SMTP server", notify.smtp_host, e, placeholder="smtp.gmail.com") }}
+    {{ field("smtp_port", "Port", notify.smtp_port, e, "number", help="587 (STARTTLS) or 465 (SSL)") }}
+    {{ field("smtp_username", "Username", notify.smtp_username, e, help="Leave empty if the server needs no login") }}
+    {{ secret("smtp_password", "Password", notify.email_has_password, e, help="For Gmail, an App password") }}
+    {{ field("email_from", "From address", notify.email_from, e) }}
+    {{ field("email_to", "Send to", notify.email_to, e, help="Comma-separated addresses") }}
+    <div class="test-row"><button type="button" class="ghost small" hx-post="/notifications/test/email" hx-include="closest form" hx-target="next .result-slot">Send test</button><span class="result-slot"></span></div>
+  </div>
+</fieldset>

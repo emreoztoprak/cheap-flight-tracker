@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block head %}<script src="/static/chart.umd.min.js" defer></script>{% endblock %}
+{% block content %}
+<header class="page-head"><h1>Dashboard</h1><a class="button" href="/routes/new">Add route</a></header>
+{% include "_status.html" %}
+<div class="grid cards">
+  {% for card in cards %}
+  <article class="card route-card">
+    <header>
+      <div><h3>{{ card.name }}</h3><p class="muted">{{ card.title }} · {{ card.trip }}</p></div>
+      <a class="ghost small button" href="/routes/{{ card.index }}">Edit</a>
+    </header>
+    {% if card.best %}
+    <div class="price">{{ card.best.price }} <span>{{ card.currency }}</span></div>
+    <a class="offer" href="{{ card.best.url }}" target="_blank" rel="noopener">{{ card.best.line }}</a>
+    {% for offer in card.others %}
+    <a class="offer secondary" href="{{ offer.url }}" target="_blank" rel="noopener">{{ offer.line }}</a>
+    {% endfor %}
+    {% else %}
+    <p class="muted">No prices yet — they appear after the next check.</p>
+    {% endif %}
+    {% if card.spark.data|length > 1 %}
+    <canvas class="spark" height="60" data-spark='{{ card.spark|tojson }}'></canvas>
+    {% endif %}
+    <footer class="muted small">
+      {% if card.checked %}Checked {{ card.checked }}{% endif %}
+      {% if card.alert %} · Last alert {{ card.alert }}{% endif %}
+    </footer>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}
