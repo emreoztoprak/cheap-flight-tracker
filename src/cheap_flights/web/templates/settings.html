@@ -38,7 +38,7 @@
       {{ field("defaults.next_days", "Days ahead", v["defaults.next_days"], e, "number", placeholder="90") }}
       {{ select("defaults.stops", "Connections", v["defaults.stops"], [("", "Built-in (any)"), ("any", "Any"), ("max_1", "At most 1 stop"), ("direct", "Direct only")], e) }}
       {{ field("defaults.adults", "Adults", v["defaults.adults"], e, "number", placeholder="1") }}
-      {{ field("defaults.top_n", "Options per message", v["defaults.top_n"], e, "number", placeholder="3") }}
+      {{ field("defaults.top_n", "Options per message", v["defaults.top_n"], e, "number", placeholder="3", help="Used by routes that don't set their own") }}
     </div>
   </section>
 

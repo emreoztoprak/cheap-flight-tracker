@@ -165,12 +165,14 @@ def create_app(
         return page(request, "_status.html", "dashboard")
 
     @app.post("/run", response_class=HTMLResponse)
-    def run_now(request: Request):
-        result = coordinator.start_run("manual")
+    async def run_now(request: Request):
+        route = str((await request.form()).get("route") or "").strip() or None
+        result = coordinator.start_run("manual", route=route)
         notes = {
-            "started": "Check started.",
+            "started": f"Check started for {route}." if route else "Check started.",
             "busy": "A check is already running.",
             "no_config": "Save a valid configuration first.",
+            "unknown_route": "Unknown route — reload the page.",
         }
         return page(request, "_status.html", "dashboard", note=notes[result])
 

@@ -8,7 +8,12 @@
   <article class="card route-card">
     <header>
       <div><h3>{{ card.name }}</h3><p class="muted">{{ card.title }} · {{ card.trip }}</p></div>
-      <a class="ghost small button" href="/routes/{{ card.index }}">Edit</a>
+      <div class="card-actions">
+        <button class="small" data-run-route hx-post="/run" hx-vals='{{ {"route": card.name}|tojson }}'
+                hx-target="#status" hx-swap="outerHTML" title="Check only this route now"
+                {% if status.state in ('running', 'setup') %}disabled{% endif %}>Run</button>
+        <a class="ghost small button" href="/routes/{{ card.index }}">Edit</a>
+      </div>
     </header>
     {% if card.best %}
     <div class="price">{{ card.best.price }} <span>{{ card.currency }}</span></div>

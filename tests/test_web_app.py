@@ -171,6 +171,17 @@ def test_dashboard_shows_routes_and_runs(env):
     assert "2 searches" in status.text
 
 
+def test_run_one_route_from_the_dashboard(env):
+    client, coordinator, *_ = configured(env)
+    page = client.get("/")
+    assert 'hx-vals=\'{"route": "ist-lon"}\'' in page.text
+    response = client.post("/run", data={"route": "ist-lon"})
+    assert "Check started for ist-lon." in response.text
+    coordinator.wait_idle(5)
+    assert coordinator.store.last_run().trigger == "manual · ist-lon"
+    assert "Unknown route" in client.post("/run", data={"route": "nope"}).text
+
+
 def test_route_crud(env):
     client, coordinator, files, *_ = configured(env)
     assert "ist-lon" in client.get("/routes").text

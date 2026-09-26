@@ -61,6 +61,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 progress { width: 100%; margin-top: 8px; accent-color: var(--accent); }
 
 .route-card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.card-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .price { font-size: 2rem; font-weight: 700; margin: 12px 0 4px; } .price span { font-size: 1rem; color: var(--muted); }
 .offer { display: block; white-space: pre-wrap; color: var(--text); font-size: .88rem; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft); margin-top: 6px; }
 .offer.secondary { background: transparent; border: 1px dashed var(--border); color: var(--muted); }

@@ -41,6 +41,7 @@ class Progress:
     started_at: datetime | None = None
     done: int = 0
     total: int = 0
+    route: str | None = None  # set when only one route is being checked
 
 
 class Coordinator:
@@ -152,26 +153,35 @@ class Coordinator:
             return None
         return self._run_locked(loaded, trigger)
 
-    def start_run(self, trigger: str = "manual") -> str:
-        """Start a run in the background: "started", "busy" or "no_config"."""
+    def start_run(self, trigger: str = "manual", route: str | None = None) -> str:
+        """Start a run in the background, of every route or just `route`:
+        "started", "busy", "no_config" or "unknown_route"."""
         loaded = self._loaded
         if loaded is None:
             return "no_config"
+        if route is not None:
+            if route not in {resolved.route.name for resolved in loaded.routes}:
+                return "unknown_route"
+            trigger = f"{trigger} · {route}"
         if not self._run_lock.acquire(blocking=False):
             return "busy"
         thread = threading.Thread(
-            target=self._run_locked, args=(loaded, trigger), name="manual-run", daemon=True
+            target=self._run_locked,
+            args=(loaded, trigger, route),
+            name="manual-run",
+            daemon=True,
         )
         thread.start()
         return "started"
 
-    def _run_locked(self, loaded: Loaded, trigger: str) -> RunStats:
+    def _run_locked(self, loaded: Loaded, trigger: str, route: str | None = None) -> RunStats:
         """Runs with self._run_lock already held; releases it."""
         try:
-            self._progress = Progress(True, trigger, self._clock())
+            self._progress = Progress(True, trigger, self._clock(), route=route)
+            routes = [r for r in loaded.routes if route is None or r.route.name == route]
             app = App(
                 loaded.config,
-                loaded.routes,
+                routes,
                 self._fetcher_factory(loaded.config),
                 self.store,
                 Dispatcher(self._notifier_factory(loaded.config)),

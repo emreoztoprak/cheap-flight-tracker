@@ -37,7 +37,7 @@ price history in the `cfr-data` volume are kept.
 
 | Page | What you can do |
 |---|---|
-| **Dashboard** | Status (working / checking / can't fetch), last and next run, **Run now** with live progress, one card per route with the current best offers (links to Google Flights) and a 30-day price line |
+| **Dashboard** | Status (working / checking / can't fetch), last and next run, **Run now** (all routes) with live progress, one card per route with a **Run** button to check just that route, the current best offers (links to Google Flights) and a 30-day price line |
 | **Routes** | Add, edit, duplicate and delete routes; airport and city suggestions while typing; a live estimate of how many searches a route costs |
 | **Notifications** | Telegram and email settings with **Send test** buttons; tokens and passwords are write-only |
 | **Settings** | Schedule (with presets and a preview of the next runs), time zone, route defaults, search limits, health alerts, logging, and an editor for `config.yaml` itself |
@@ -165,7 +165,7 @@ override the file.
 | `stops` | `any` | `direct`, `max_1` or `any` |
 | `currency` | `EUR` | 3-letter currency code |
 | `passengers` | `{adults: 1}` | `adults`, `children` |
-| `top_n` | `3` | Options listed per message |
+| `top_n` | `3` | Options listed per message; set per route, or once under `defaults` |
 | `max_airports_per_country` | `10` | Country destinations use their largest airports, up to this many |
 | `alert.max_price` | – | 🔥 Highlight when the cheapest price is at or below this |
 | `alert.drop_percent` | – | 🔥 Highlight when the cheapest price is this % below the 30-day low (needs 3 earlier runs) |

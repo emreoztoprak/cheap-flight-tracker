@@ -85,7 +85,7 @@ def status(coordinator: Coordinator, now: datetime) -> Status:
         total = f"/{progress.total}" if progress.total else ""
         return Status(
             "running",
-            "Checking prices…",
+            f"Checking {progress.route}…" if progress.route else "Checking prices…",
             f"{progress.done}{total} searches done",
             progress,
             last,

@@ -55,10 +55,12 @@
 </fieldset>
 
 <fieldset>
-  <legend>Highlight 🔥 when <span class="muted small">(optional — you get a message after every check either way)</span></legend>
+  <legend>Message</legend>
+  <p class="muted small">You get a message after every check. The price rules are optional — they only add a 🔥 highlight.</p>
   <div class="form-grid">
-    {{ field("max_price", "Price is at or below", route.max_price, e, "number", help="In the route currency; round trips are the total", attrs='min="1"') }}
-    {{ field("drop_percent", "Or drops by % vs. 30-day low", route.drop_percent, e, "number", help="Needs 3 earlier runs of history", attrs='min="1" max="99" step="0.5"') }}
+    {{ field("top_n", "Options per message", route.top_n, e, "number", help="Cheapest flights listed, 1–10", attrs='min="1" max="10"') }}
+    {{ field("max_price", "🔥 when price is at or below", route.max_price, e, "number", help="In the route currency; round trips are the total", attrs='min="1"') }}
+    {{ field("drop_percent", "🔥 when it drops by % vs. 30-day low", route.drop_percent, e, "number", help="Needs 3 earlier runs of history", attrs='min="1" max="99" step="0.5"') }}
   </div>
 </fieldset>
 
@@ -68,7 +70,6 @@
     {{ field("currency", "Currency", route.currency, e, help="3-letter code, e.g. EUR", attrs='maxlength="3"') }}
     {{ field("adults", "Adults", route.adults, e, "number", attrs='min="1" max="9"') }}
     {{ field("children", "Children", route.children, e, "number", attrs='min="0" max="8"') }}
-    {{ field("top_n", "Options per message", route.top_n, e, "number", attrs='min="1" max="10"') }}
     {{ field("max_airports_per_country", "Airports per country", route.max_airports_per_country, e, "number", help="For country destinations like DE", attrs='min="1" max="50"') }}
   </div>
 </details>

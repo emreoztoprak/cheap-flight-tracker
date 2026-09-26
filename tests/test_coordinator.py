@@ -104,6 +104,37 @@ def test_only_one_run_at_a_time_and_progress_is_visible(tmp_path):
     assert coordinator.progress().done == 2
 
 
+TWO_ROUTES = {
+    **RAW,
+    "routes": [
+        RAW["routes"][0],
+        {**RAW["routes"][0], "name": "r2", "to": ["AMS"]},
+    ],
+}
+
+
+def test_run_a_single_route(tmp_path):
+    coordinator, _, inbox, fetcher = make(tmp_path, raw=TWO_ROUTES)
+    assert coordinator.start_run(route="r2") == "started"
+    coordinator.wait_idle(5)
+    assert fetcher.calls == 2  # only r2's two dates
+    assert [m.title.split(" ")[1] for m in inbox.messages] == ["r2"]
+    progress = coordinator.progress()
+    assert progress.route == "r2" and progress.trigger == "manual · r2"
+    assert coordinator.store.last_run().trigger == "manual · r2"
+    assert coordinator.start_run(route="nope") == "unknown_route"
+
+
+def test_single_route_run_waits_for_a_running_check(tmp_path):
+    gate = threading.Event()
+    coordinator, *_ = make(tmp_path, raw=TWO_ROUTES, fetcher=Fetcher(gate))
+    assert coordinator.start_run() == "started"
+    assert coordinator.start_run(route="r1") == "busy"
+    gate.set()
+    coordinator.wait_idle(5)
+    assert coordinator.progress().route is None
+
+
 def test_broken_file_keeps_last_good_config(tmp_path):
     coordinator, files, *_ = make(tmp_path)
     (tmp_path / "config.yaml").write_text("routes: [")

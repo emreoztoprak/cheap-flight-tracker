@@ -87,4 +87,9 @@ window.addEventListener("load", () => {
   const select = document.querySelector("[data-history-route]");
   if (select) select.addEventListener("change", drawHistory);
 });
-document.addEventListener("htmx:afterSwap", () => syncForm(document));
+// While any check runs, the per-route Run buttons are disabled like "Run now".
+function syncRunButtons() {
+  const running = document.querySelector("#status.status-running, #status.status-setup") !== null;
+  document.querySelectorAll("[data-run-route]").forEach((button) => { button.disabled = running; });
+}
+document.addEventListener("htmx:afterSwap", () => { syncForm(document); syncRunButtons(); });
