@@ -27,7 +27,7 @@
 <section class="card table-card"><h2>Recent runs</h2>
   <table><thead><tr><th>Started</th><th>Took</th><th>Result</th><th>Trigger</th></tr></thead><tbody>
   {% for run in runs %}
-    <tr><td>{{ fmt(run.started_at, tz) }}</td><td>{{ ((run.finished_at - run.started_at).total_seconds() // 60)|int }} min</td>
+    <tr><td>{{ fmt(run.started_at, tz) }}</td><td>{{ duration(run) }}</td>
         <td>{{ run_summary(run) }}{% if run.failures %} <span class="badge bad">{{ run.failures|dictsort|map('join', ': ')|join(', ') }}</span>{% endif %}</td>
         <td>{{ run.trigger }}</td></tr>
   {% else %}<tr><td colspan="4" class="muted">No runs yet.</td></tr>{% endfor %}

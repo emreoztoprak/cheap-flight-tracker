@@ -129,3 +129,12 @@ def test_save_text_applies(tmp_path):
     text = files.raw_text().replace("0 8 * * *", "0 9 * * *")
     assert coordinator.save_text(text) == []
     assert coordinator.schedule()[0] == "0 9 * * *"
+
+
+def test_missing_config_is_not_logged_as_an_error(tmp_path, caplog):
+    import logging
+
+    caplog.set_level(logging.INFO)
+    make(tmp_path, raw=None)
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert any("waiting for setup" in r.getMessage() for r in caplog.records)

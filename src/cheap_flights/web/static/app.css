@@ -14,6 +14,7 @@
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg); color: var(--text); display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
 a { color: var(--accent); text-decoration: none; }
@@ -33,6 +34,8 @@ main { padding: 28px clamp(16px, 4vw, 40px); max-width: 1180px; width: 100%; }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 18px; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.card-head select { width: auto; min-width: 180px; }
+.spaced { margin-top: 14px; }
 .stack > * + * { margin-top: 14px; }
 .grid.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
 
@@ -57,21 +60,22 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .status-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 progress { width: 100%; margin-top: 8px; accent-color: var(--accent); }
 
-.route-card header { display: flex; justify-content: space-between; gap: 10px; }
+.route-card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .price { font-size: 2rem; font-weight: 700; margin: 12px 0 4px; } .price span { font-size: 1rem; color: var(--muted); }
-.offer { display: block; color: var(--text); font-size: .88rem; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft); margin-top: 6px; }
+.offer { display: block; white-space: pre-wrap; color: var(--text); font-size: .88rem; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft); margin-top: 6px; }
 .offer.secondary { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
-.spark { width: 100%; margin-top: 10px; }
+.spark-box { position: relative; height: 56px; margin-top: 10px; }
 .route-card footer { margin-top: 10px; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 18px; }
 .form-grid .wide, .field-wrap.wide { grid-column: 1 / -1; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid > *, .pair > * { min-width: 0; }
 fieldset { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px 16px; margin: 16px 0 0; }
 legend { font-weight: 600; padding: 0 6px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .label { font-size: .85rem; font-weight: 600; }
-input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; width: 100%; }
+input, select, textarea { min-width: 0; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; width: 100%; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
 .help { font-size: .78rem; color: var(--muted); }

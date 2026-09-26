@@ -40,7 +40,7 @@ def run_forever(
     *,
     now: Callable[[], datetime] | None = None,
     wait: Callable[[float], object] | None = None,
-    tick_seconds: float = 30.0,
+    tick_seconds: float = 5.0,
 ) -> None:
     """Run `job` as soon as a schedule exists, then at each cron time.
 

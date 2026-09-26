@@ -84,6 +84,11 @@ class Coordinator:
         return self._error
 
     def reload(self) -> None:
+        if not self.files.exists():
+            with self._state_lock:
+                self._error = f"no configuration yet ({self.files.config_path} does not exist)"
+            log.info("no configuration yet: waiting for setup in the dashboard")
+            return
         try:
             loaded = self.files.load()
         except ConfigError as exc:

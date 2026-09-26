@@ -43,7 +43,7 @@
       {{ field("depart_to", "Depart before (hour)", route.depart_to, e, "number", attrs='min="0" max="23"', placeholder="any") }}
     </div>
   </div>
-  <div class="field{% if e.get('weekdays') %} has-error{% endif %}">
+  <div class="field spaced{% if e.get('weekdays') %} has-error{% endif %}">
     <span class="label">Departure days <span class="muted">(none = any day)</span></span>
     <div class="chips">
       {% for day in weekdays %}

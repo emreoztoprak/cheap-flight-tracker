@@ -20,7 +20,7 @@
     <p class="muted">No prices yet — they appear after the next check.</p>
     {% endif %}
     {% if card.spark.data|length > 1 %}
-    <canvas class="spark" height="60" data-spark='{{ card.spark|tojson }}'></canvas>
+    <div class="spark-box"><canvas data-spark='{{ card.spark|tojson }}'></canvas></div>
     {% endif %}
     <footer class="muted small">
       {% if card.checked %}Checked {{ card.checked }}{% endif %}

@@ -50,6 +50,11 @@ def next_run(coordinator: Coordinator, now: datetime) -> datetime | None:
     return croniter(cron, now.astimezone(tz)).get_next(datetime)
 
 
+def duration(run: RunRecord) -> str:
+    seconds = int((run.finished_at - run.started_at).total_seconds())
+    return f"{seconds} s" if seconds < 90 else f"{round(seconds / 60)} min"
+
+
 def run_summary(run: RunRecord) -> str:
     failed = sum(run.failures.values())
     text = f"{run.searches} searches, {run.ok} with offers"

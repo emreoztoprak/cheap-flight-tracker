@@ -1,5 +1,6 @@
-# Cheap Flight Tracker configuration. Copy to config.yaml and edit.
-# ${NAME} is replaced with the environment variable NAME (see .env.example).
+# Cheap Flight Tracker configuration. The dashboard (http://localhost:8080) writes this file;
+# to edit by hand, copy it to config/config.yaml and the secrets to config/.env.
+# ${NAME} is replaced with the value of NAME from .env (or the environment).
 
 schedule: "0 */6 * * *"     # cron: every 6 hours. A check also runs once at startup.
 timezone: Europe/Madrid      # used for the schedule, "today", and times in health alerts

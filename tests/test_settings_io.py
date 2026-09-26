@@ -80,3 +80,9 @@ def test_save_text_keeps_comments_and_validates(files, tmp_path):
     assert "# my routes" in (tmp_path / "config.yaml").read_text()
     assert files.save_text("routes: [") == [FieldError("", files.save_text("routes: [")[0].message)]
     assert "not valid YAML" in files.save_text("routes: [")[0].message
+
+
+def test_config_file_is_readable_but_env_is_private(files, tmp_path):
+    files.save(RAW, {"TELEGRAM_BOT_TOKEN": TOKEN})
+    assert stat.S_IMODE((tmp_path / "config.yaml").stat().st_mode) == 0o644
+    assert stat.S_IMODE((tmp_path / ".env").stat().st_mode) == 0o600

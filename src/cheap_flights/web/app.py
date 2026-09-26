@@ -90,6 +90,7 @@ def create_app(
                 "status": views.status(coordinator, now),
                 "fmt": views.fmt,
                 "run_summary": views.run_summary,
+                "duration": views.duration,
                 "weekdays": WEEKDAYS,
                 **context,
             },

@@ -89,3 +89,9 @@ def test_a_changed_schedule_applies_before_the_old_due_time(tmp_path):
         job, lambda: schedule["value"], stop, tmp_path / "hb", now=now, wait=wait, tick_seconds=60
     )
     assert runs == ["10:00", "10:15"]
+
+
+def test_default_tick_is_short_enough_for_quick_setup():
+    import inspect
+
+    assert inspect.signature(run_forever).parameters["tick_seconds"].default <= 5

@@ -330,3 +330,13 @@ def test_cross_site_posts_are_refused(env):
     )
     assert response.status_code == 403
     assert coordinator.schedule()[0] == "0 8 * * *"
+
+
+def test_run_duration_is_readable():
+    from datetime import timedelta
+
+    from cheap_flights.store import RunRecord
+    from cheap_flights.web.views import duration
+
+    assert duration(RunRecord(NOW, NOW + timedelta(seconds=3), "manual", 1, 1, 0)) == "3 s"
+    assert duration(RunRecord(NOW, NOW + timedelta(minutes=5), "manual", 1, 1, 0)) == "5 min"

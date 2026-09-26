@@ -17,37 +17,66 @@ tells you that too.
 The image is published to GitHub Container Registry for `linux/amd64` and `linux/arm64`, so there
 is nothing to build.
 
-1. Create a Telegram bot and/or an email app password (see below).
-2. Get the compose file and the examples, then edit `config.yaml` and `.env`:
-   ```bash
-   mkdir cheap-flight-tracker && cd cheap-flight-tracker
-   base=https://raw.githubusercontent.com/emreoztoprak/cheap-flight-tracker/main
-   curl -fsSL -o docker-compose.yml $base/docker-compose.yml
-   curl -fsSL -o config.yaml $base/config.example.yaml
-   curl -fsSL -o .env $base/.env.example
-   docker compose pull
-   ```
-3. Check notifications, then do a dry run (prints alerts instead of sending them):
-   ```bash
-   docker compose run --rm cheap-flights --test-notify
-   docker compose run --rm cheap-flights --dry-run
-   ```
-4. Start it:
-   ```bash
-   docker compose up -d
-   docker compose logs -f
-   ```
+```bash
+mkdir -p cheap-flight-tracker/config && cd cheap-flight-tracker
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/emreoztoprak/cheap-flight-tracker/main/docker-compose.yml
+docker compose up -d
+```
+
+Open **http://localhost:8080** and follow the setup: add a Telegram bot and/or an email account
+(see below for how to get them), press **Send test**, then add your first route. Checking starts
+as soon as you save.
+
+To update later: `docker compose pull && docker compose up -d`. Settings in `./config` and the
+price history in the `cfr-data` volume are kept.
+
+## Dashboard
+
+| Page | What you can do |
+|---|---|
+| **Dashboard** | Status (working / checking / can't fetch), last and next run, **Run now** with live progress, one card per route with the current best offers (links to Google Flights) and a 30-day price line |
+| **Routes** | Add, edit, duplicate and delete routes; airport and city suggestions while typing; a live estimate of how many searches a route costs |
+| **Notifications** | Telegram and email settings with **Send test** buttons; tokens and passwords are write-only |
+| **Settings** | Schedule (with presets and a preview of the next runs), time zone, route defaults, search limits, health alerts, logging, and an editor for `config.yaml` itself |
+| **History** | Price chart per route and destination, alerts sent, recent runs, and the live log |
+
+Everything you save is validated first: an invalid change is never written, and the fields with
+problems are highlighted. Changes apply from the next run, without a restart.
+
+**Files.** The dashboard writes `./config/config.yaml` and `./config/.env`. Secrets (bot token,
+SMTP password) only go to `.env` (permissions `600`) and are referenced from `config.yaml` as
+`${TELEGRAM_BOT_TOKEN}` / `${SMTP_PASSWORD}`. The previous version of each file is kept as
+`.bak`. You can still edit both files by hand — see `config.example.yaml` and `.env.example`;
+the dashboard picks up hand edits on the next save or restart. Saving from the dashboard's forms
+rewrites `config.yaml` without comments.
+
+**Access.** The compose file publishes the dashboard on `127.0.0.1:8080`, so only this computer
+can open it. There is no login: if you change the port mapping to `8080:8080` to reach it from
+other devices, anyone on your network can change the settings.
+
+**File ownership.** The container runs as the owner of the `./config` folder, so the files stay
+editable by you. Set `PUID` / `PGID` environment variables to choose a different user.
 
 Without compose:
 
 ```bash
-docker run -d --name cheap-flights --restart unless-stopped \
-  -v "$PWD/config.yaml:/config/config.yaml:ro" -v cfr-data:/data \
-  --env-file .env ghcr.io/emreoztoprak/cheap-flight-tracker:latest
+docker run -d --name cheap-flights --restart unless-stopped -p 127.0.0.1:8080:8080 \
+  -v "$PWD/config:/config" -v cfr-data:/data ghcr.io/emreoztoprak/cheap-flight-tracker:latest
 ```
 
-To update later: `docker compose pull && docker compose up -d`. Your price history in the
-`cfr-data` volume is kept.
+**Upgrading from a version without the dashboard:** move your files into a `config` folder and
+use the new compose file:
+
+```bash
+mkdir -p config && mv config.yaml .env config/
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/emreoztoprak/cheap-flight-tracker/main/docker-compose.yml
+docker compose pull && docker compose up -d
+```
+
+Setups that pass secrets as environment variables (`env_file:` / `-e`) keep working; values in
+`./config/.env` take precedence.
 
 ### Image tags
 
@@ -57,8 +86,6 @@ To update later: `docker compose pull && docker compose up -d`. Your price histo
 | `1.2.3`, `1.2`, `1` | A release, from a `v1.2.3` git tag |
 | `sha-abc1234` | One specific commit of `main` |
 
-Use a named volume for `/data` (as above). A bind-mounted host directory must be writable by
-UID 10001.
 
 ## Telegram setup
 
@@ -78,15 +105,21 @@ Turn on 2-Step Verification, create an **App password** at
 
 | Flag | Meaning |
 |---|---|
-| *(none)* | Run a check now, then on `schedule`, until stopped |
+| *(none)* | Run the dashboard, and checks on `schedule` (the first one right away) until stopped |
+| `--no-ui` | Same, without the dashboard (needs a valid config) |
 | `--once` | Run one check and exit (exit code 1 if the run failed) |
 | `--dry-run` | Run one check, print alerts to stdout, keep no state |
 | `--test-notify` | Send a test message to every channel and exit |
 | `--config PATH` | Config file (default `$CFR_CONFIG` or `/config/config.yaml`) |
 | `--data-dir PATH` | State directory (default `$CFR_DATA_DIR` or `/data`) |
+| `--env-file PATH` | Secrets file (default `$CFR_ENV_FILE` or `.env` next to the config file) |
+| `--ui-host HOST` / `--ui-port PORT` | Dashboard address (default `0.0.0.0:8080`; `$CFR_UI_HOST`, `$CFR_UI_PORT`) |
 | `--log-level LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
 
-Exit code `2` means the configuration is invalid; the log says exactly which field.
+Exit code `2` means the configuration is invalid (or the data directory is unusable); the log
+says exactly which field. Without a config, the default mode waits for setup in the dashboard.
+
+For one-off commands with compose: `docker compose run --rm cheap-flights --dry-run`.
 
 ## Configuration reference
 
@@ -184,7 +217,8 @@ so far, then exits. Press Ctrl+C a second time to exit immediately.
 
 ## Data
 
-`/data/state.db` (SQLite) keeps price history (90 days), sent alerts and health state.
+`/data/state.db` (SQLite) keeps price history, sent alerts and runs (90 days), each route's
+latest offers, and health state. Older databases are upgraded automatically.
 `/data/heartbeat` is updated while running; the Docker health check marks the container
 unhealthy if it is older than 10 minutes.
 

@@ -2,10 +2,12 @@ services:
   cheap-flights:
     image: ghcr.io/emreoztoprak/cheap-flight-tracker:latest
     restart: unless-stopped
-    env_file: .env
+    ports:
+      # Dashboard on http://localhost:8080 — only this computer can reach it (there is no login).
+      - "127.0.0.1:8080:8080"
     volumes:
-      - ./config.yaml:/config/config.yaml:ro
-      - cfr-data:/data
+      - ./config:/config   # config.yaml + .env, written by the dashboard
+      - cfr-data:/data     # price history, logs
 
 volumes:
   cfr-data:
