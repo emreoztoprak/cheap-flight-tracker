@@ -1,10 +1,11 @@
-"""Render deals and health events as channel-neutral Messages."""
+"""Render price reports and health events as channel-neutral Messages."""
 
 from __future__ import annotations
 
 from zoneinfo import ZoneInfo
 
-from .evaluator import Deal
+from .config import Route
+from .evaluator import Report
 from .health import EventKind, HealthEvent
 from .models import Offer
 from .notify.base import Line, Message
@@ -36,15 +37,43 @@ def offer_line(index: int, offer: Offer) -> Line:
     return Line(text=f"{index}. {offer_summary(offer)}", url=offer.url)
 
 
-def deal_message(deal: Deal) -> Message:
-    route = deal.route
-    best = deal.offers[0]
-    title = (
-        f"✈️ {route.origin} → {', '.join(route.to)}: {best.price} {best.currency} ({deal.reason})"
-    )
+def change_text(report: Report) -> str:
+    currency = report.route.currency
+    if report.previous is None:
+        return "first check"
+    change = report.change
+    if change is None:
+        return ""
+    if change == 0:
+        return "= same as last check"
+    arrow, sign = ("↑", "+") if change > 0 else ("↓", "−")
+    return f"{arrow} {sign}{abs(change)} {currency} since last check ({report.previous} {currency})"
+
+
+def report_message(report: Report) -> Message:
+    """The message sent after every check, one per route."""
+    route = report.route
+    if not report.offers:
+        return Message(
+            title=f"✈️ {route.name}: no flights found this check ({report.searches} searches)",
+            lines=(Line(_route_summary(route)),),
+        )
+    icon = "🔥" if report.highlights else "✈️"
+    title = f"{icon} {route.name}: {report.best_price} {route.currency}"
+    if report.highlights:
+        title += " — " + "; ".join(report.highlights)
+    title += f"  {change_text(report)}"
+    best = report.offers[0]
     footer = "Round-trip prices are the total for both directions." if best.return_date else ""
-    lines = tuple(offer_line(index, offer) for index, offer in enumerate(deal.offers, start=1))
+    lines = (Line(_route_summary(route)),) + tuple(
+        offer_line(index, offer) for index, offer in enumerate(report.offers, start=1)
+    )
     return Message(title=title, lines=lines, footer=footer)
+
+
+def _route_summary(route: Route) -> str:
+    trip = "one way" if route.trip == "one-way" else "round trip"
+    return f"{route.origin} → {', '.join(route.to)} · {trip}"
 
 
 def check_message() -> Message:

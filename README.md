@@ -1,15 +1,17 @@
 # Cheap Flight Tracker
 
 Watches **live Google Flights prices** from your city to the places you care about and sends you
-a **Telegram message and/or email** when it finds a deal. If it can no longer fetch prices, it
-tells you that too.
+a **Telegram message and/or email** after every check with the cheapest options and how the price
+changed since the last check. If it can no longer fetch prices, it tells you that too.
 
 - Origins: an airport (`IST`) or a city (`Istanbul`).
 - Destinations: airports (`AMS`), cities (`London`), or whole countries (`DE`).
 - Finds the cheapest day in a date window (a fixed range or the next N days), one-way or round
   trip with a stay length, optionally only certain weekdays or departure hours.
-- Alerts when the price is at or below your limit, and/or a set percentage below the lowest price
-  seen in the last 30 days.
+- After every check, one message per route: the cheapest options and the change since the last
+  check (`↑ +35 EUR`, `↓ −20 EUR`, `= same`), or "no flights found".
+- Optional 🔥 highlight when the price is at or below your limit, and/or a set percentage below
+  the lowest price seen in the last 30 days.
 - Runs on a cron schedule inside Docker, or once on demand.
 
 ## Quick start
@@ -39,7 +41,7 @@ price history in the `cfr-data` volume are kept.
 | **Routes** | Add, edit, duplicate and delete routes; airport and city suggestions while typing; a live estimate of how many searches a route costs |
 | **Notifications** | Telegram and email settings with **Send test** buttons; tokens and passwords are write-only |
 | **Settings** | Schedule (with presets and a preview of the next runs), time zone, route defaults, search limits, health alerts, logging, and an editor for `config.yaml` itself |
-| **History** | Price chart per route and destination, alerts sent, recent runs, and the live log |
+| **History** | Price chart per route and destination, messages sent, recent runs, and the live log |
 
 Everything you save is validated first: an invalid change is never written, and the fields with
 problems are highlighted. Changes apply from the next run, without a restart.
@@ -111,7 +113,7 @@ Turn on 2-Step Verification, create an **App password** at
 | *(none)* | Run the dashboard, and checks on `schedule` (the first one right away) until stopped |
 | `--no-ui` | Same, without the dashboard (needs a valid config) |
 | `--once` | Run one check and exit (exit code 1 if the run failed) |
-| `--dry-run` | Run one check, print alerts to stdout, keep no state |
+| `--dry-run` | Run one check, print the messages to stdout, keep no state |
 | `--test-notify` | Send a test message to every channel and exit |
 | `--config PATH` | Config file (default `$CFR_CONFIG` or `/config/config.yaml`) |
 | `--data-dir PATH` | State directory (default `$CFR_DATA_DIR` or `/data`) |
@@ -136,7 +138,7 @@ override the file.
 |---|---|---|
 | `schedule` | `0 */6 * * *` | Cron expression for checks (a check also runs at startup) |
 | `timezone` | `UTC` | Time zone for the schedule, "today", and health alert times |
-| `history_days` | `90` | How long prices, sent alerts and runs are kept (31–3650); older data is deleted after each run. The History chart shows this whole period |
+| `history_days` | `90` | How long prices, sent messages and runs are kept (31–3650); older data is deleted after each run. The History chart shows this whole period |
 | `defaults` | – | Route settings every route inherits; a key set on a route replaces the default |
 | `search` | – | See below |
 | `routes` | required | List of routes |
@@ -159,13 +161,21 @@ override the file.
 | `stops` | `any` | `direct`, `max_1` or `any` |
 | `currency` | `EUR` | 3-letter currency code |
 | `passengers` | `{adults: 1}` | `adults`, `children` |
-| `top_n` | `3` | Options listed per alert |
+| `top_n` | `3` | Options listed per message |
 | `max_airports_per_country` | `10` | Country destinations use their largest airports, up to this many |
-| `alert.max_price` | – | Alert when the cheapest price is at or below this |
-| `alert.drop_percent` | – | Alert when the cheapest price is this % below the 30-day low (needs 3 earlier runs) |
+| `alert.max_price` | – | 🔥 Highlight when the cheapest price is at or below this |
+| `alert.drop_percent` | – | 🔥 Highlight when the cheapest price is this % below the 30-day low (needs 3 earlier runs) |
 
-At least one of `alert.max_price` / `alert.drop_percent` is required. The same deal is not sent
-again unless the price drops further or 7 days pass.
+Every check sends one message per route, whatever the price, e.g.
+
+```
+✈️ ist-to-europe: 281 EUR  ↑ +35 EUR since last check (246 EUR)
+🔥 weekend-rome: 95 EUR — below your limit of 120 EUR  ↓ −20 EUR since last check (115 EUR)
+✈️ ist-to-europe: no flights found this check (180 searches)
+```
+
+`alert` is optional: it only adds the 🔥 highlight. When every search for a route fails, no price
+message is sent for it — the health alerts below cover that.
 
 **How places are searched.** A city in the built-in list (London, Paris, Berlin, Rome, Milan,
 New York, Barcelona, Amsterdam, Madrid, Istanbul, Moscow, Stockholm, Frankfurt) is one search
@@ -221,7 +231,7 @@ so far, then exits. Press Ctrl+C a second time to exit immediately.
 
 ## Data
 
-`/data/state.db` (SQLite) keeps price history, sent alerts and runs (for `history_days`, default
+`/data/state.db` (SQLite) keeps price history, sent messages and runs (for `history_days`, default
 90 days — set it under Settings → Price history), each route's
 latest offers, and health state. Older databases are upgraded automatically.
 `/data/heartbeat` is updated while running; the Docker health check marks the container

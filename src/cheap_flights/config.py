@@ -115,14 +115,10 @@ class Passengers(_Model):
 
 
 class AlertRule(_Model):
+    """Optional highlights: a check's message is marked 🔥 when one of these is met."""
+
     max_price: int | None = Field(default=None, gt=0)
     drop_percent: float | None = Field(default=None, gt=0, lt=100)
-
-    @model_validator(mode="after")
-    def _at_least_one(self) -> AlertRule:
-        if self.max_price is None and self.drop_percent is None:
-            raise ValueError("set max_price, drop_percent, or both")
-        return self
 
 
 class Route(_Model):
@@ -139,7 +135,7 @@ class Route(_Model):
     max_airports_per_country: int = Field(default=10, ge=1, le=50)
     depart_time: tuple[int, int] | None = None
     weekdays: tuple[int, ...] | None = None
-    alert: AlertRule
+    alert: AlertRule = AlertRule()
 
     @field_validator("origin", mode="before")
     @classmethod

@@ -3,7 +3,7 @@
 {% block title %}Notifications{% endblock %}
 {% block content %}
 <header class="page-head"><h1>Notifications</h1></header>
-<p class="muted">Deals and “can't fetch data” alerts go to every enabled channel. Tokens and passwords are stored in <code>.env</code>, never in <code>config.yaml</code>.</p>
+<p class="muted">Price reports after every check and “can't fetch data” alerts go to every enabled channel. Tokens and passwords are stored in <code>.env</code>, never in <code>config.yaml</code>.</p>
 {{ general(general_errors) }}
 <form method="post" action="/notifications" class="card stack">
   {% include "_notify_fields.html" %}

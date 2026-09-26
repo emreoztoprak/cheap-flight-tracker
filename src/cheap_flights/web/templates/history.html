@@ -16,11 +16,11 @@
   {% else %}<p class="muted">No routes yet.</p>{% endif %}
 </section>
 
-<section class="card table-card"><h2>Alerts sent</h2>
+<section class="card table-card"><h2>Messages sent</h2>
   <table><thead><tr><th>When</th><th>Route</th><th>Price</th><th>Why</th></tr></thead><tbody>
   {% for alert in alerts %}
-    <tr><td>{{ fmt(alert.sent_at, tz) }}</td><td>{{ alert.route }}</td><td>{{ alert.price }} {{ alert.currency }}</td><td class="muted">{{ alert.reason }}</td></tr>
-  {% else %}<tr><td colspan="4" class="muted">No alerts yet.</td></tr>{% endfor %}
+    <tr><td>{{ fmt(alert.sent_at, tz) }}</td><td>{{ alert.route }}</td><td>{% if alert.price %}{{ alert.price }} {{ alert.currency }}{% else %}—{% endif %}</td><td class="muted">{{ alert.reason }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No messages yet.</td></tr>{% endfor %}
   </tbody></table>
 </section>
 

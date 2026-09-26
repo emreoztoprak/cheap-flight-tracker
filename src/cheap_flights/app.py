@@ -10,9 +10,9 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from .config import Config
-from .evaluator import evaluate, record_history, top_offers
+from .evaluator import record_history, summarize, top_offers
 from .health import EventKind, advance, load_state, save_state
-from .messages import deal_message, health_message, offer_summary
+from .messages import change_text, health_message, offer_summary, report_message
 from .notify.base import Dispatcher
 from .places import ResolvedRoute
 from .planner import build_plan, departure_dates
@@ -132,14 +132,24 @@ class App:
         )
         if output.stopped:
             log.warning("run interrupted by shutdown after %d searches", output.stats.searches)
+        planned = Counter(job.route.name for job in plan.jobs)
         for resolved in self._routes:
-            self._finish_route(resolved, output.offers.get(resolved.route.name, []), now)
+            name = resolved.route.name
+            self._finish_route(
+                resolved,
+                output.offers.get(name, []),
+                now,
+                searches=planned[name],
+                answered=output.answered[name],
+            )
         self._store.prune(now - timedelta(days=self._config.history_days))
         return output.stats
 
-    def _finish_route(self, resolved: ResolvedRoute, offers: list, now: datetime) -> None:
+    def _finish_route(
+        self, resolved: ResolvedRoute, offers: list, now: datetime, *, searches: int, answered: int
+    ) -> None:
         route = resolved.route
-        deal = evaluate(route, offers, self._store, now)
+        report = summarize(route, offers, self._store, now, searches)
         record_history(offers, self._store, now)
         self._store.set_route_offers(
             route.name,
@@ -165,12 +175,17 @@ class App:
             len(offers),
             f"{best} {route.currency}" if best is not None else "none",
         )
-        if deal is None:
+        if not answered:
+            # Nothing came back for this route (not searched, or every search failed):
+            # a report would be misleading; failures are covered by health alerts.
             return
-        delivery = self._dispatcher.send(deal_message(deal))
+        delivery = self._dispatcher.send(report_message(report))
         if delivery.delivered:
-            self._store.record_alert(route.name, now, deal.best_price, route.currency, deal.reason)
-            log.info("deal alert sent for %s: %s", route.name, deal.reason)
+            reason = "; ".join(report.highlights) or change_text(report)
+            self._store.record_alert(
+                route.name, now, report.best_price or 0, route.currency, reason
+            )
+            log.info("report sent for %s: %s", route.name, reason)
 
     def _update_health(self, stats: RunStats, now: datetime) -> None:
         state = load_state(self._store)

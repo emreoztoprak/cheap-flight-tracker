@@ -25,7 +25,7 @@
   <section class="card"><h2>Price history</h2>
     <div class="form-grid">
       {{ field("history_days", "Keep price history (days)", v["history_days"], e, "number", placeholder="90",
-         help="31–3650. Prices, alerts and runs older than this are deleted after each run — lowering it deletes older data.", attrs='min="31" max="3650"') }}
+         help="31–3650. Prices, sent messages and runs older than this are deleted after each run — lowering it deletes older data.", attrs='min="31" max="3650"') }}
     </div>
   </section>
 
@@ -38,7 +38,7 @@
       {{ field("defaults.next_days", "Days ahead", v["defaults.next_days"], e, "number", placeholder="90") }}
       {{ select("defaults.stops", "Connections", v["defaults.stops"], [("", "Built-in (any)"), ("any", "Any"), ("max_1", "At most 1 stop"), ("direct", "Direct only")], e) }}
       {{ field("defaults.adults", "Adults", v["defaults.adults"], e, "number", placeholder="1") }}
-      {{ field("defaults.top_n", "Options per alert", v["defaults.top_n"], e, "number", placeholder="3") }}
+      {{ field("defaults.top_n", "Options per message", v["defaults.top_n"], e, "number", placeholder="3") }}
     </div>
   </section>
 

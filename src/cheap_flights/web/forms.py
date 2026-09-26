@@ -160,7 +160,8 @@ def route_from_form(form: FormLike, defaults: Mapping[str, Any]) -> dict[str, An
     if _text(form, "drop_percent"):
         drop = _number(_text(form, "drop_percent"), float)
         alert["drop_percent"] = int(drop) if isinstance(drop, float) and drop.is_integer() else drop
-    full["alert"] = alert
+    if alert:
+        full["alert"] = alert
     return _compact(full, defaults)
 
 

@@ -144,7 +144,8 @@ def route_cards(coordinator: Coordinator, now: datetime) -> list[dict[str, Any]]
                 "checked": fmt(datetime.fromisoformat(saved["run_at"]), tz)
                 if saved.get("run_at")
                 else None,
-                "alert": f"{alert.price} {alert.currency} on {fmt(alert.sent_at, tz)}"
+                "alert": f"{f'{alert.price} {alert.currency}' if alert.price else 'no flights'}"
+                f" on {fmt(alert.sent_at, tz)}"
                 if alert
                 else None,
                 "spark": spark,

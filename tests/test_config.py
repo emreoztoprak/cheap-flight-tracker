@@ -108,7 +108,6 @@ def test_invalid_top_level_settings(tmp_path, snippet, error):
         ("    nights: 7-3", "nights must be within 1-30"),
         ("    depart_time: morning", "depart_time must look like"),
         ("    weekdays: [funday]", "unknown weekday"),
-        ("    alert: {}", "set max_price, drop_percent, or both"),
         ("    to: [NO]", "quote it"),
     ],
 )
@@ -222,3 +221,14 @@ def test_history_days_default_and_limits(tmp_path):
     for bad in ("30", "4000"):
         with pytest.raises(ConfigError, match="history_days"):
             load(tmp_path, BASE + f"history_days: {bad}\n")
+
+
+def test_alert_rules_are_optional(tmp_path):
+    text = """
+routes:
+  - { name: r, from: IST, to: AMS }
+notify:
+  telegram: { bot_token: "123456:abcdefghij", chat_id: "1" }
+"""
+    route = load(tmp_path, text, env={}).routes[0]
+    assert (route.alert.max_price, route.alert.drop_percent) == (None, None)

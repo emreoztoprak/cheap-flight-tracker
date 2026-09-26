@@ -36,7 +36,7 @@ log = logging.getLogger("cheap_flights")
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="cheap-flights", description="Watch Google Flights prices and send deal alerts."
+        prog="cheap-flights", description="Watch Google Flights prices and send price reports."
     )
     parser.add_argument(
         "--config",

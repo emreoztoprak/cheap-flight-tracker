@@ -53,6 +53,7 @@ class RunOutput:
     stats: RunStats
     offers: dict[str, list[Offer]]
     stopped: bool = False
+    answered: Counter[str] = field(default_factory=Counter)  # searches per route Google answered
 
 
 def execute(
@@ -78,9 +79,11 @@ def execute(
         stats.searches += 1
         if result.kind is FetchKind.OK:
             stats.ok += 1
+            output.answered[job.route.name] += 1
             output.offers[job.route.name].extend(result.offers)
         elif result.kind is FetchKind.NO_FLIGHTS:
             stats.no_flights += 1
+            output.answered[job.route.name] += 1
         else:
             stats.failures[str(result.kind)] += 1
             log.warning(

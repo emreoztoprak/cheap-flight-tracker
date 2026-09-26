@@ -4,7 +4,7 @@
 
 schedule: "0 */6 * * *"     # cron: every 6 hours. A check also runs once at startup.
 timezone: Europe/Madrid      # used for the schedule, "today", and times in health alerts
-history_days: 90             # keep prices, alerts and runs this long (31–3650)
+history_days: 90             # keep prices, sent messages and runs this long (31–3650)
 
 defaults:                    # every route inherits these; a route can override any of them
   currency: EUR
@@ -13,7 +13,7 @@ defaults:                    # every route inherits these; a route can override 
   window: { next_days: 90 }  # or { from: 2026-11-01, to: 2026-12-15 }
   stops: any                 # direct | max_1 | any
   passengers: { adults: 1 }
-  top_n: 3                   # flight options listed in each deal alert
+  top_n: 3                   # flight options listed in each message
 
 search:
   delay_seconds: 1.0         # pause between Google requests (±30% jitter)
@@ -24,7 +24,7 @@ routes:
   - name: ist-to-europe
     from: Istanbul           # airport code (IST) or city
     to: [London, AMS, DE]    # city, airport code, or country code (quote "NO" for Norway)
-    alert: { max_price: 150, drop_percent: 20 }
+    alert: { max_price: 150, drop_percent: 20 }   # optional 🔥 highlight; a message is sent after every check anyway
 
   - name: weekend-rome
     from: IST

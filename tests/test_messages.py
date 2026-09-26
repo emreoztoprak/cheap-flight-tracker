@@ -1,9 +1,8 @@
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
-from cheap_flights.evaluator import Deal
 from cheap_flights.health import EventKind, HealthEvent
-from cheap_flights.messages import check_message, deal_message, health_message, offer_line
+from cheap_flights.messages import check_message, health_message, offer_line, report_message
 from cheap_flights.models import Leg
 from tests.helpers import make_offer, make_route
 
@@ -25,23 +24,43 @@ def test_connecting_overnight_round_trip_line():
     )
 
 
-def test_deal_message():
-    route = make_route(to=["DE", "London"])
-    deal = Deal(
-        route, (make_offer(89, return_date=date(2026, 11, 7)),), "at or below your limit of 100 EUR"
-    )
-    message = deal_message(deal)
-    assert message.title == "✈️ IST → DE, London: 89 EUR (at or below your limit of 100 EUR)"
-    assert len(message.lines) == 1
+def report(route, offers, previous=None, highlights=(), searches=3):
+    from cheap_flights.evaluator import Report
+
+    return Report(route, tuple(offers), previous, tuple(highlights), searches)
+
+
+def test_report_message_with_change_and_round_trip_footer():
+    route = make_route(name="mad-ist", origin="MAD", to=["IST"])
+    message = report_message(report(route, [make_offer(281, return_date=date(2026, 11, 7))], 246))
+    assert message.title == "✈️ mad-ist: 281 EUR  ↑ +35 EUR since last check (246 EUR)"
+    assert message.lines[0].text.startswith("MAD → IST")
+    assert message.lines[1].text.startswith("1. 281 EUR")
     assert message.footer == "Round-trip prices are the total for both directions."
 
 
-def test_plain_rendering():
-    message = deal_message(Deal(make_route(trip="one-way"), (make_offer(89),), "why"))
-    text = message.plain()
-    assert text.startswith("✈️ IST → LHR: 89 EUR (why)\n\n1. 89 EUR")
-    assert "   https://www.google.com/travel/flights" in text
-    assert message.footer == ""
+def test_report_message_change_texts():
+    route = make_route(trip="one-way")
+    down = report_message(report(route, [make_offer(200)], 220))
+    assert down.title.endswith("↓ −20 EUR since last check (220 EUR)")
+    same = report_message(report(route, [make_offer(200)], 200))
+    assert same.title.endswith("= same as last check")
+    first = report_message(report(route, [make_offer(200)], None))
+    assert first.title.endswith("first check") and first.footer == ""
+
+
+def test_report_message_highlights_deals():
+    route = make_route()
+    message = report_message(report(route, [make_offer(90)], 131, ["below your limit of 100 EUR"]))
+    assert (
+        message.title
+        == "🔥 r1: 90 EUR — below your limit of 100 EUR  ↓ −41 EUR since last check (131 EUR)"
+    )
+
+
+def test_report_message_without_flights():
+    message = report_message(report(make_route(), [], 246, searches=30))
+    assert message.title == "✈️ r1: no flights found this check (30 searches)"
 
 
 def test_check_message():

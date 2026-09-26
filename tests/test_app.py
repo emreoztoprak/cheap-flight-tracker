@@ -68,27 +68,58 @@ def build(respond, *, route=None, threshold=2, inbox=None, clock=None):
     return app, store, inbox
 
 
-def test_deal_is_sent_once_and_recorded():
-    app, store, inbox = build(priced(80))
+def hourly():
+    """A clock that moves one hour per check, like real scheduled runs."""
+    ticks = iter(range(100))
+    return lambda: NOW + timedelta(hours=next(ticks))
+
+
+def test_every_check_sends_a_report_with_the_change():
+    app, store, inbox = build(priced(80), clock=hourly())
     stats = app.run_once()
     assert (stats.searches, stats.ok) == (2, 2)
-    assert inbox.titles == ["✈️ IST → LHR: 80 EUR (at or below your limit of 100 EUR)"]
-    assert store.last_alert("r1", "EUR").price == 80
+    assert inbox.titles == ["🔥 r1: 80 EUR — below your limit of 100 EUR  first check"]
     app.run_once()
-    assert len(inbox.messages) == 1  # dedupe
+    assert inbox.titles[-1] == "🔥 r1: 80 EUR — below your limit of 100 EUR  = same as last check"
+    assert [a.price for a in store.alerts(5)] == [80, 80]
 
 
-def test_no_deal_above_limit_but_history_recorded():
+def test_report_is_sent_above_the_limit_too():
     app, store, inbox = build(priced(150))
     app.run_once()
-    assert inbox.messages == []
+    assert inbox.titles == ["✈️ r1: 150 EUR  first check"]
     assert store.route_lows("r1", "EUR", NOW - timedelta(1), NOW + timedelta(1)) == [150]
 
 
-def test_failed_delivery_is_not_recorded_so_it_retries_next_run():
+def test_price_increase_is_reported():
+    price = {"now": 246}
+    app, _, inbox = build(lambda job: priced(price["now"])(job), clock=hourly())
+    app.run_once()
+    price["now"] = 281
+    app.run_once()
+    assert inbox.titles[-1] == "✈️ r1: 281 EUR  ↑ +35 EUR since last check (246 EUR)"
+    price["now"] = 261
+    app.run_once()
+    assert inbox.titles[-1] == "✈️ r1: 261 EUR  ↓ −20 EUR since last check (281 EUR)"
+
+
+def test_no_report_when_every_search_for_the_route_failed():
+    app, store, inbox = build(lambda job: FetchResult(FetchKind.BLOCKED), threshold=5)
+    app.run_once()
+    assert inbox.messages == []
+    assert store.alerts(5) == []
+
+
+def test_no_flights_is_reported():
+    app, _, inbox = build(lambda job: FetchResult(FetchKind.NO_FLIGHTS))
+    app.run_once()
+    assert inbox.titles == ["✈️ r1: no flights found this check (2 searches)"]
+
+
+def test_failed_delivery_is_not_logged_as_sent():
     app, store, _ = build(priced(80), inbox=Inbox(fail=True))
     app.run_once()
-    assert store.last_alert("r1", "EUR") is None
+    assert store.alerts(5) == []
 
 
 def test_outage_then_recovery():
@@ -170,7 +201,7 @@ def test_run_offers_and_alert_reason_are_stored_for_the_dashboard():
     first = saved["offers"][0]
     assert first["line"].startswith("80 EUR  IST→LHR")
     assert first["url"].startswith("https://www.google.com/travel/flights")
-    assert store.alerts(5)[0].reason == "at or below your limit of 100 EUR"
+    assert store.alerts(5)[0].reason == "below your limit of 100 EUR"
 
 
 def test_crashed_run_is_recorded_too():

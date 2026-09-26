@@ -194,6 +194,23 @@ def test_route_crud(env):
     assert len(coordinator.loaded.config.routes) == 2
 
 
+def test_route_without_highlight_rule_is_saved_without_alert(env):
+    client, coordinator, files, *_ = configured(env)
+    route = {
+        "name": "ist-ams",
+        "origin": "IST",
+        "to": "AMS",
+        "trip": "one-way",
+        "window_mode": "next",
+        "next_days": "10",
+    }
+    assert client.post("/routes/new", data=route, follow_redirects=False).status_code == 303
+    saved = coordinator.loaded.config.routes[1]
+    assert (saved.alert.max_price, saved.alert.drop_percent) == (None, None)
+    assert "alert" not in files.raw_text().split("ist-ams")[1]
+    assert "—" in client.get("/routes").text
+
+
 def test_invalid_route_is_not_saved(env):
     client, coordinator, *_ = configured(env)
     page = client.post(
